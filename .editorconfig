@@ -31,7 +31,7 @@ dotnet_diagnostic.IDE0004.severity = warning
 dotnet_diagnostic.IDE0005.severity = warning
 
 # Use var instead of explicit type
-dotnet_diagnostic.IDE0007.severity = warning
+dotnet_diagnostic.IDE0007.severity = silent
 # csharp_style_var_for_built_in_types
 # csharp_style_var_when_type_is_apparent
 # csharp_style_var_elsewhere
@@ -154,7 +154,7 @@ dotnet_diagnostic.IDE0039.severity = warning
 # csharp_style_pattern_local_over_anonymous_function
 
 # Add accessibility modifiers
-dotnet_diagnostic.IDE0040.severity = warning
+dotnet_diagnostic.IDE0040.severity = none
 # dotnet_style_require_accessibility_modifiers
 
 # Use is null check
@@ -316,7 +316,7 @@ dotnet_diagnostic.IDE0084.severity = warning
 # visual_basic_style_prefer_isnot_expression
 
 # Simplify new expression
-dotnet_diagnostic.IDE0090.severity = warning
+dotnet_diagnostic.IDE0090.severity = silent
 csharp_style_implicit_object_creation_when_type_is_apparent = true
 
 # Remove unnecessary equality operator
@@ -334,7 +334,7 @@ dotnet_diagnostic.IDE1005.severity = warning
 # csharp_style_conditional_delegate_call
 
 # Naming styles
-dotnet_diagnostic.IDE1006.severity = warning
+dotnet_diagnostic.IDE1006.severity = silent
 
 
 
@@ -467,9 +467,9 @@ csharp_style_allow_blank_lines_between_consecutive_braces_experimental = false
 csharp_style_allow_blank_line_after_colon_in_constructor_initializer_experimental = false
 
 # Prefer "var" everywhere
-csharp_style_var_for_built_in_types = true:warning
-csharp_style_var_when_type_is_apparent = true:warning
-csharp_style_var_elsewhere = true:warning
+csharp_style_var_for_built_in_types = true:silent
+csharp_style_var_when_type_is_apparent = true:silent
+csharp_style_var_elsewhere = true:silent
 
 # Prefer expression body on single line
 csharp_style_expression_bodied_methods = when_on_single_line
@@ -552,3 +552,6 @@ generated_code = true
 
 [Assets/Meta/**]
 generated_code = true
+
+# IDE0040: Add accessibility modifiers
+dotnet_style_require_accessibility_modifiers = never

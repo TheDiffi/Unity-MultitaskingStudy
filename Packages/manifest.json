@@ -2,10 +2,15 @@
   "dependencies": {
     "com.meta.xr.mrutilitykit": "74.0.0",
     "com.unity.feature.development": "1.0.2",
-    "com.unity.sentis": "2.1.1",
-    "com.unity.ugui": "1.0.0",
+    "com.unity.multiplayer.center": "1.0.0",
+    "com.unity.sentis": "2.1.2",
+    "com.unity.ugui": "2.0.0",
     "com.unity.xr.management": "4.5.0",
-    "com.unity.xr.oculus": "4.5.0",
+    "com.unity.xr.meta-openxr": "2.1.0",
+    "com.unity.xr.openxr": "1.14.2",
+    "jp.keijiro.apriltag": "1.0.2",
+    "jp.keijiro.klak.testtools": "3.1.0",
+    "com.unity.modules.accessibility": "1.0.0",
     "com.unity.modules.ai": "1.0.0",
     "com.unity.modules.androidjni": "1.0.0",
     "com.unity.modules.animation": "1.0.0",
@@ -37,5 +42,15 @@
     "com.unity.modules.vr": "1.0.0",
     "com.unity.modules.wind": "1.0.0",
     "com.unity.modules.xr": "1.0.0"
-  }
+  },
+  "scopedRegistries": [
+    {
+      "name": "Keijiro",
+      "url": "https://registry.npmjs.com",
+      "scopes": [
+        "jp.keijiro"
+      ],
+      "overrideBuiltIns": false
+    }
+  ]
 }
