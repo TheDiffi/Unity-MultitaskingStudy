@@ -10,7 +10,7 @@ Build/
 *.sln
 /.utmp
 *.zip
-
+*.apk
 RuntimeActionBindings.json
 RuntimeActionBindings.json.meta
 ProjectSettings\Packages\com.unity.testtools.codecoverage\Settings.json
