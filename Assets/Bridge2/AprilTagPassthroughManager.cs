@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using PassthroughCameraSamples;
 using System.Linq;
+using Meta.XR.ImmersiveDebugger; // Add this namespace for DebugMember
 
 namespace TryAR.MarkerTracking
 {
@@ -36,7 +37,9 @@ namespace TryAR.MarkerTracking
 
         [Header("Tag Detection")]
         [SerializeField] private int m_decimation = 4;
-        [SerializeField] private float m_tagSize = 0.5f;
+        [SerializeField]
+        [DebugMember(Tweakable = true, Min = 0.1f, Max = 2.0f, Category = "AprilTag")]
+        private float m_tagSize = 0.5f;
         [SerializeField, Tooltip("List of marker IDs mapped to their corresponding GameObjects")]
         private List<MarkerGameObjectPair> m_markerGameObjectPairs = new List<MarkerGameObjectPair>();
 
@@ -45,7 +48,7 @@ namespace TryAR.MarkerTracking
         [SerializeField] private RawImage m_resultRawImage;
         [SerializeField] private float m_canvasDistance = 1f;
         [SerializeField] private float m_smoothingFactor = 0.5f;
-        [SerializeField] private bool m_enableSmoothing = true;
+        [SerializeField] private bool m_enableSmoothing = false;
 
         // AprilTag detection components
         private AprilTag.TagDetector m_tagDetector;
@@ -53,7 +56,6 @@ namespace TryAR.MarkerTracking
         private Dictionary<int, PoseData> m_prevPoseDataDictionary = new Dictionary<int, PoseData>();
         TagDrawer m_drawer;
         [SerializeField] Material m_tagMaterial = null;
-
 
         // Camera parameters
         private float m_focalLengthX, m_focalLengthY;
@@ -90,11 +92,6 @@ namespace TryAR.MarkerTracking
 
             Debug.Log("[AprilTag] Initializing tag detection system...");
             InitializeTagDetection();
-            Debug.Log("[AprilTag] Tag detection system initialized");
-
-            // Set initial visibility states
-            m_cameraCanvas.gameObject.SetActive(true);
-            m_webCamTextureManager.enabled = true;
 
             Debug.Log("[AprilTag] Initialization complete. System is ready.");
         }
@@ -127,7 +124,6 @@ namespace TryAR.MarkerTracking
             Debug.Log("[AprilTag] Camera texture is now available");
         }
 
-
         /// <summary>
         /// Initializes the marker detection system with camera parameters and builds the marker dictionary.
         /// </summary>
@@ -153,7 +149,14 @@ namespace TryAR.MarkerTracking
             Debug.Log($"[AprilTag] Marker dictionary built with {m_markerGameObjectDictionary.Count} entries");
 
             Debug.Log("[AprilTag] Configuring result texture...");
-            ConfigureResultTexture(width, height);
+            // Calculate reduced size based on decimation factor
+            int reducedWidth = width / m_decimation;
+            int reducedHeight = height / m_decimation;
+
+            // Create texture for visualization
+            Texture2D resultTexture = new Texture2D(reducedWidth, reducedHeight, TextureFormat.RGB24, false);
+            m_resultRawImage.texture = resultTexture;
+
 
             m_isReady = true;
             Debug.Log("[AprilTag] Tag detection system is ready");
@@ -175,46 +178,9 @@ namespace TryAR.MarkerTracking
         }
 
         /// <summary>
-        /// Configures the texture for displaying camera and tracking results.
-        /// </summary>
-        private void ConfigureResultTexture(int width, int height)
-        {
-            // Calculate reduced size based on decimation factor
-            int reducedWidth = width / m_decimation;
-            int reducedHeight = height / m_decimation;
-
-            // Create texture for visualization
-            Texture2D resultTexture = new Texture2D(reducedWidth, reducedHeight, TextureFormat.RGB24, false);
-            m_resultRawImage.texture = resultTexture;
-        }
-
-        /// <summary>
-        /// Applies smoothing between current and previous pose data.
-        /// </summary>
-        /// <param name="currentPose">The current detected pose</param>
-        /// <param name="previousPose">The previous frame's pose</param>
-        /// <param name="tagId">Tag ID for logging purposes</param>
-        /// <returns>Smoothed pose data</returns>
-        private PoseData ApplySmoothing(PoseData currentPose, PoseData previousPose, int tagId)
-        {
-            if (previousPose.pos == Vector3.zero)
-                return currentPose;
-
-            float t = m_smoothingFactor;
-            PoseData smoothedPose = new PoseData
-            {
-                pos = Vector3.Lerp(currentPose.pos, previousPose.pos, t),
-                rot = Quaternion.Slerp(currentPose.rot, previousPose.rot, t)
-            };
-
-            LogSlowed($"[AprilTag] Applied smoothing to tag {tagId} with factor {t}: " +
-                      $"Current Pose: {currentPose.pos}, Previous Pose: {previousPose.pos}, Smoothed Pose: {smoothedPose.pos}");
-            return smoothedPose;
-        }
-        /// <summary>
         /// Updates camera poses, detects markers, and handles input for toggling visualization mode.
         /// </summary>
-        private void Update()
+        private void LateUpdate()
         {
             // Skip if camera isn't ready
             if (m_webCamTextureManager.WebCamTexture == null || !m_isReady)
@@ -267,7 +233,8 @@ namespace TryAR.MarkerTracking
             foreach (var tag in m_tagDetector.DetectedTags)
             {
                 LogSlowed($"[AprilTag] Processing tag ID: {tag.ID}");
-                m_drawer.Draw(tag.ID, tag.Position, tag.Rotation, m_tagSize);
+                var (drawerPos, drawerRot) = MovePoseToCameraCoordiantes(tag.Position, tag.Rotation);
+                m_drawer.Draw(tag.ID, drawerPos, drawerRot, m_tagSize);
 
                 if (!m_markerGameObjectDictionary.TryGetValue(tag.ID, out GameObject targetObject) || targetObject == null)
                 {
@@ -288,28 +255,30 @@ namespace TryAR.MarkerTracking
                 };
 
                 // Apply smoothing if we have previous pose data
-                PoseData smoothedPoseData;
+                PoseData smoothedPoseData = currentPoseData;
                 if (m_enableSmoothing && m_prevPoseDataDictionary.TryGetValue(tag.ID, out PoseData prevPose))
                 {
                     smoothedPoseData = ApplySmoothing(currentPoseData, prevPose, tag.ID);
-                }
-                else
-                {
-                    smoothedPoseData = currentPoseData;
                 }
 
                 // Store current pose for next frame
                 m_prevPoseDataDictionary[tag.ID] = smoothedPoseData;
 
                 // Convert pose to matrix and apply to game object
-                var arMatrix = ARUtils.ConvertPoseDataToMatrix(ref smoothedPoseData, true);
-                arMatrix = m_cameraAnchor.localToWorldMatrix * arMatrix;
-                ARUtils.SetTransformFromMatrix(targetObject.transform, ref arMatrix);
+                var (gameObjPos, gameObjRot) = MovePoseToCameraCoordiantes(tag.Position, tag.Rotation);
+                targetObject.transform.position = gameObjPos;
+                targetObject.transform.rotation = gameObjRot;
 
                 // Ensure object is active
                 targetObject.SetActive(true);
                 Debug.Log($"[AprilTag] Successfully updated GameObject for tag {tag.ID}");
             }
+        }
+
+        private (Vector3 position, Quaternion rotation) MovePoseToCameraCoordiantes(Vector3 tagPosition, Quaternion tagRotation)
+        {
+            // Convert the tag position and rotation to camera coordinates
+            return (m_cameraAnchor.TransformPoint(tagPosition), m_cameraAnchor.rotation * tagRotation);
         }
 
         /// <summary>
@@ -327,6 +296,30 @@ namespace TryAR.MarkerTracking
             // Position the canvas in front of the camera
             m_cameraCanvas.transform.position = cameraPose.position + cameraPose.rotation * Vector3.forward * m_canvasDistance;
             m_cameraCanvas.transform.rotation = cameraPose.rotation;
+        }
+
+        /// <summary>
+        /// Applies smoothing between current and previous pose data.
+        /// </summary>
+        /// <param name="currentPose">The current detected pose</param>
+        /// <param name="previousPose">The previous frame's pose</param>
+        /// <param name="tagId">Tag ID for logging purposes</param>
+        /// <returns>Smoothed pose data</returns>
+        private PoseData ApplySmoothing(PoseData currentPose, PoseData previousPose, int tagId)
+        {
+            if (previousPose.pos == Vector3.zero)
+                return currentPose;
+
+            float t = m_smoothingFactor;
+            PoseData smoothedPose = new PoseData
+            {
+                pos = Vector3.Lerp(currentPose.pos, previousPose.pos, t),
+                rot = Quaternion.Slerp(currentPose.rot, previousPose.rot, t)
+            };
+
+            LogSlowed($"[AprilTag] Applied smoothing to tag {tagId} with factor {t}: " +
+                      $"Current Pose: {currentPose.pos}, Previous Pose: {previousPose.pos}, Smoothed Pose: {smoothedPose.pos}");
+            return smoothedPose;
         }
 
         private void LogSlowed(string message)

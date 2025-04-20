@@ -1,0 +1,148 @@
+Supported platforms
+Unity
+Mixed Reality
+Implementation using WebCamTexture
+Updated: Mar 19, 2025
+Unity Implementation using WebCamTexture
+This section describes how to access the Passthrough Camera API using the Unity WebCamTexture and the complimentary helper classes that offer advanced data access like camera intrinsics / extrinsics. If you plan to use the Android Native interface, please refer to Native Camera2 API.
+After completing this section, the developer will know how to:
+
+    Download and use the provided GitHub samples repository to access the Passthrough Camera with WebCamTexture.
+    Display the passthrough texture on a 2D canvas.
+    Get the exact pose of an RGB camera in the world-space coordinates and how to orient 2D camera images accurately relative to the physical environment.
+    Understand how to access camera data on CPU to write a simple brightness estimation logic.
+    Use Unity Sentis to detect real-worlds object with ML/CV.
+    Write a simple GPU shader to add effects to the passthrough camera.
+
+Use Cases
+This section is intended to provide information to allow an engineer familiar with Android and MetaXR development to:
+
+    Set-up and gain access to the Passthrough Camera API using Unity.
+    Understand how to integrate with other Meta Quest APIs.
+    Understand the organization of the samples and the primary function of each of the samples.
+
+The Unity-PassthroughCameraApiSamples
+is a GitHub project created to help Unity developers to get access to Quest Camera data via Unity standard WebCamTexture
+class and Android Camera2 API.
+The WebCamTexture class provides a straightforward way to access Android’s Camera2 API, making it suitable for most use cases. However, its functionality is relatively basic compared to the underlying Camera2 API.
+To expand on this functionality, two helper classes have been added to the package: WebCamTextureManager and PassthroughCameraUtils. The WebCamTextureManager waits for all necessary permissions and initializes the WebCamTexture with the appropriate camera (left or right).
+The PassthroughCameraUtils enables you to retrieve camera metadata, including camera intrinsics and extrinsics, and to convert 2D image coordinates to the 3D world space.
+The package contains five samples that demonstrate how to use WebCamTexture class to access the camera data:
+
+    CameraViewer sample: shows a 2D canvas with the camera data inside
+    CameraToWorld sample: demonstrates how to align the pose of the RGB camera images with Passthrough, and how a 2D image coordinates can be transformed into 3D rays in world space.
+    BrightnessEstimation sample: illustrates brightness estimation and how it can be used to adapt the experience to the user’s environment.
+    MultiObjectDetection sample: shows how to feed camera data to Unity Sentis
+
+    to recognize real-world objects. For more information on the Sentis implementation in this sample, please refer to Unity Sentis page.
+    ShaderSample: demonstrates how to apply custom effects to camera texture on GPU.
+
+Unity Prerequisites
+In addition to the general prerequisites listed in the first section, Unity development requires one of these LTS Unity versions. Older minor versions should also be supported, but we only tested samples with:
+
+    Unity 2022.3.58f1.
+    Unity 6000.0.38f1
+
+Caution:
+
+    When downloading the Unity-PassthroughCameraApiSamples
+
+    and deciding to upgrade the project to **Unity 6, the Android Manifest file needs to be updated. Check the [Troubleshooting guide](#troubleshooting) below.
+    Please fix all Project Setup Tool suggestions after opening the project in Unity 6.
+
+Known Limitations
+
+    Due to a limitation of the WebCamTexture, only one camera can be accessed at a time. The app must choose which camera it wants to use (left or right) before enabling the WebCamTextureManager. To change the camera, disable the WebCamTextureManager, modify the ‘eye’ property, then enable the component again.
+    Camera image timestamps are not currently supported. Because the camera has a small latency, when the user moves or rotates the head, the camera’s pose is not perfectly aligned with the image. Take this limitation into account when building low-latency or fast experiences.
+    For Unity 2022, one frame delay is required before creating the WebCamTexture object. Our WebCamTextureManager sample does this automatically but consider this knows issue when using WebCamTexture directly on v74 OS.
+
+Working with the Passthrough Camera Api Samples
+This section will describe how to use the Passthrough Camera Api. The process outlined in the following section will cover:
+
+    Configuring a project.
+    Using the WebCamTextureManagerPrefab prefab as the basic controller.
+    Using PassthroughCameraUtils to get extra camera data.
+    Overview of the samples that we have created to get you started.
+
+Depending on the selected PassthroughCameraEye.eye, WebCamTextureManager will select a corresponding WebCamDevice
+by mapping WebCamTexture.devices
+to CameraManager.getCameraIdList()
+by index.
+Each camera supports these resolutions, which can be also accessed via PassthroughCameraUtils.GetOutputSizes() method:
+
+    320 x 240
+    640 x 480
+    800 x 600
+    1280 x 960
+
+Configuring A Unity Project To Use PCA
+Setting up the Project
+Clone the GitHub project: https://github.com/oculus-samples/Unity-PassthroughCameraApiSamples
+
+    Open the project with Unity 2022.3.58f1 or Unity 6000.0.38f1.
+    Open ‘Meta / Tools / Project Setup Tool’ and fix any issues that it finds in the configuration of your project.
+    Create a new empty scene.
+    Use ‘Meta / Tools / Building Blocks’ to add Camera Rig and Passthrough building blocks to your scene. Camera Passthrough API depends on an application running in with Passthrough functionality enabled. Please check out the linked developer page for details on configuring it properly.
+    To integrate Passthrough Camera API in your scene, drag and drop the Assets / Samples / PassthroughCamera / Prefabs / WebCamTextureManagerPrefab prefab to your scene.
+    To access the camera texture from a custom C# script, get a reference to the WebCamTextureManager and access its WebCamTexture property. The property will return a valid non-null value only after all permissions have been granted and texture is initialized, so check it is not null before accessing properties of the returned WebCamTexture. For example, in the CameraViewer example, we assign the WebCamTexture to the RawImage.texture to display the texture with the Unity UI system.
+
+WebCamTextureManagerPrefab
+This prefab contains the WebCamTextureManager C# script which is responsible for:
+
+    Initializing the WebCamTexture to access the camera data.
+    Stopping and disposing of the WebCamTexture when the scene is unloaded or the application is closed.
+
+Also, this prefab contains the PassthroughCameraPermissions C# class responsible for requesting necessary permissions: android.permission.CAMERA and horizonos.permission.HEADSET_CAMERA. Please note: this class uses UnityEngine.Android.Permission
+class which can only handle one permission request at a time. This script should not be used with any other scripts that manage permissions.
+WebCamTextureManager has the following public fields: alt_text
+
+    Select the camera source using the Eye field.
+    Specify the desired resolution of the camera images in the Requested Resolution. The value of (0, 0) will request the highest possible resolution.
+
+Transitioning 2D Image Objects to 3D World Space
+When working with the Passthrough Camera API, a common task is to transition objects detected on the image into a 3D space. For example, if an app recognizes a can of soda, it may need to render a virtual augment on top of it. To achieve this, the app needs to determine the position and orientation of the can in 3D space.
+The PassthroughCameraUtils class offers several methods that can help you achieve this goal:
+
+    List<Vector2Int> GetOutputSizes(PassthroughCameraEye cameraEye) - returns a list of all supported resolutions.
+    PassthroughCameraIntrinsics GetCameraIntrinsics(PassthroughCameraEye cameraEye) - returns the camera intrinsics data: FocalLength, PrincipalPoint, Resolution, and Skew.
+    Pose GetCameraPoseInWorld(PassthroughCameraEye cameraEye) - returns the most recent world pose of the passthrough camera.
+    ScreenPointToRayInWorld(PassthroughCameraEye cameraEye, Vector2Int screenPoint) - returns a 3D ray in world space which starts from the passthrough camera origin and passes through the 2D camera pixel.
+
+For our particular task, we need to use the ScreenPointToRayInWorld() method, and to pass the screen coordinate of a center of an object on the image. This will give us a ray in world space.
+While knowing the ray can be helpful, it is not enough to determine the exact position of a real-world object. To find this point, you can use the Raycast() method from MR Utility Kit. This class uses real-time depth information to determine position and normal of the intersection point between a virtual ray and physical environment.
+Below is the code snippet which demonstrates this technique:
+
+// Unity, C#:
+var cameraScreenPoint = new Vector2Int(x, y);
+var ray = PassthroughCameraUtils.ScreenPointToRayInWorld(PassthroughCameraEye.Left, cameraScreenPoint);
+
+if (environmentRaycastManager.Raycast(ray, out EnvironmentRaycastHit hitInfo))
+{
+    // Place a GameObject at the place of intersection
+    anchorGo.transform.SetPositionAndRotation(
+        hitInfo.point,
+        Quaternion.LookRotation(hitInfo.normal, Vector3.up));
+}
+
+To learn more about the capabilities of PassthroughCameraUtils class, refer to the CameraToWorld sample.
+Samples Overview
+Unity-PassthroughCameraAPISamples project contains 5 samples showing multiple ways to use Meta Quest Camera data via WebCamTexture on Unity Engine app.
+CameraViewer sample: a sample for getting the camera data and updating a Unity RawImage UI element. alt_text
+CameraToWorld sample: this sample shows how to use the camera intrinsics and extrinsics to convert the 2d image coordinates into 3d position. Also, it demonstrates how to access the world-space pose of the camera.
+While the sample is running, press A to pause or resume the camera feed. Press B to toggle the debug mode. While in the debug mode, all the scene objects are offset by 40 cm outwards, allowing you to see objects at the edges of the screen. alt_text
+BrightnessEstimation sample: a sample for lighting estimation using Camera data. This sample shows how to access camera data on the CPU to trigger app logic based on current brightness level.
+Due to the limitation of only one camera at a time, this sample doesn’t respond to brightness change in the right eye. Only the data from the left eye is used to estimate the brightness. alt_text
+MultiObjectDetection sample shows how to feed the camera data to Unity Sentis to detect objects with ML/CV. alt_text
+ShaderSample sample shows how to use the camera image on GPU as a regular UnityEngine.Texture inside a shader to create different kinds of effects. alt_text
+Best Practices
+When asking Android permissions, the app should do this from one single place. Samples handle permissions with the help of PassthroughCameraPermissions script, but if you want to integrate Camera Passthrough into an existing project, you should double-check that your project doesn’t use any other permission request mechanism like OVRPermissionsRequester or ‘OVRManager / Permission Requests On Startup’.
+Not every camera metadata property can be accessed via the WebCamTexture class. Consider using tools
+provided by Unity to communicate with the Android APIs, or writing a native plugin which accesses Camera2 API via NDK
+
+    . Refer to our native sample as an example.
+
+Troubleshooting
+
+    Check the logs if you encounter errors or crashes. Both the sample and the Camera2 implementation have lots of descriptive log messages that should be able to help you narrow down the problem.
+    Make sure both ‘android.permission.CAMERA’ and ‘horizonos.permission.HEADSET_CAMERA’ Android permissions are granted to your app. See the Managing Permissions section for instructions on how to manually grant permissions via the command line.
+    When updating the project to Unity 6, the Android Manifest will need to be updated. This can be done either manually or by using one of two Meta tools, Meta > Tools > Update AndroidManiest.xml or Meta > Tools > Create store-compatible AndroidManiest.xml. The ‘horizonos.permission.HEADSET_CAMERA’ permission has to be added back into the Manifest manually after updating.

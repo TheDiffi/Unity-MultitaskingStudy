@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>WebSocket Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 15px;
+            line-height: 1.4;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-top: 0;
+        }
+
+        #messageLog {
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 40vh;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        input,
+        button {
+            padding: 10px;
+            margin: 0;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 1rem;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            min-width: 80px;
+            touch-action: manipulation;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        #disconnectButton {
+            background-color: #f44336;
+        }
+
+        #sendButton {
+            background-color: #2196F3;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        #connectionStatus {
+            margin-left: 10px;
+            font-weight: bold;
+        }
+
+        .input-group {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        #messageType,
+        #messageData {
+            width: 100%;
+        }
+
+        .received {
+            color: green;
+        }
+
+        .sent {
+            color: blue;
+        }
+
+        .error {
+            color: red;
+        }
+
+        .connection {
+            color: purple;
+        }
+
+        .form-section {
+            background-color: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+
+        /* Media queries for responsive design */
+        @media (min-width: 768px) {
+            body {
+                max-width: 800px;
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            #messageLog {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1>WebSocket Test Client</h1>
+    <div class="control-group">
+        <button id="connectButton">Connect</button>
+        <button id="disconnectButton" disabled>Disconnect</button>
+        <span id="connectionStatus">Disconnected</span>
+    </div>
+    <div id="messageLog"></div>
+    <div class="form-section">
+        <h3>Send Message</h3>
+        <div class="input-group">
+            function disconnect() {
+            if (socket) {
+            socket.close();
+            socket = null;
+            }
+            }
+
+            function sendMessage() {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+            const type = messageType.value.trim() || 'test';
+            const data = messageData.value.trim() || 'Hello from browser!';
+
+            const message = {
+            type: type,
+            data: data
+            };
+
+            try {
+            socket.send(JSON.stringify(message));
+            logMessage(`Sent: Type=${type}, Data=${data}`, 'sent');
+            } catch (e) {
+            logMessage(`Error sending message: ${e.message}`, 'error');
+            }
+            }
+            }
+
+            connectButton.addEventListener('click', connect);
+            disconnectButton.addEventListener('click', disconnect);
+            sendButton.addEventListener('click', sendMessage);
+            </script>
+</body>
+
+</html>

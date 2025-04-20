@@ -20,9 +20,12 @@ MonoBehaviour:
   - AssemblyName: Meta.XR.MultiplayerBlocks.Shared
     DebugTypes:
     - Meta.XR.MultiplayerBlocks.Shared.CustomMatchmaking
-  immersiveDebuggerEnabled: 1
+  - AssemblyName: Assembly-CSharp
+    DebugTypes:
+    - TryAR.MarkerTracking.AprilTagPassthroughManager
+  immersiveDebuggerEnabled: 0
   immersiveDebuggerDisplayAtStartup: 1
-  showInspectors: 0
+  showInspectors: 1
   showConsole: 1
   followOverride: 1
   rotateOverride: 0
@@ -31,7 +34,7 @@ MonoBehaviour:
   showErrorLog: 1
   collapsedIdenticalLogEntries: 0
   maximumNumberOfLogEntries: 1000
-  panelDistance: 1
+  panelDistance: 2
   createEventSystem: 1
   automaticLayerCullingUpdate: 1
   panelLayer: 20

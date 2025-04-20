@@ -1285,7 +1285,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1143784096}
   - component: {fileID: 1143784095}
-  - component: {fileID: 1143784097}
   m_Layer: 0
   m_Name: AprilTagDetectionManager
   m_TagString: Untagged
@@ -1316,7 +1315,7 @@ MonoBehaviour:
   m_resultRawImage: {fileID: 1500740057}
   m_canvasDistance: 1
   m_smoothingFactor: 0.5
-  m_enableSmoothing: 0
+  m_enableSmoothing: 1
   m_tagMaterial: {fileID: 2100000, guid: 5828f113fb726f64eab08340333edd86, type: 2}
 --- !u!4 &1143784096
 Transform:
@@ -1333,19 +1332,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1143784097
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1143784094}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2f5180533bfe022429fa1248951cead3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _layoutStyle: {fileID: 0}
 --- !u!1 &1500740055
 GameObject:
   m_ObjectHideFlags: 0

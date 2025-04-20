@@ -1,11 +1,13 @@
 {
   "dependencies": {
-    "com.meta.xr.mrutilitykit": "74.0.0",
+    "com.endel.nativewebsocket": "https://github.com/endel/NativeWebSocket.git#upm",
+    "com.justinpbarnett.unity-mcp": "https://github.com/justinpbarnett/unity-mcp.git?path=/UnityMcpBridge",
+    "com.meta.xr.mrutilitykit": "74.0.2",
     "com.unity.feature.development": "1.0.2",
     "com.unity.multiplayer.center": "1.0.0",
     "com.unity.sentis": "2.1.2",
     "com.unity.ugui": "2.0.0",
-    "com.unity.xr.management": "4.5.0",
+    "com.unity.xr.management": "4.5.1",
     "com.unity.xr.meta-openxr": "2.1.0",
     "com.unity.xr.openxr": "1.14.2",
     "jp.keijiro.apriltag": "1.0.2",
