@@ -269,23 +269,22 @@ public class NBackTask : MonoBehaviour
 
             targetTrial = currentTrial >= nBackLevel && colorSequence[currentTrial] == colorSequence[currentTrial - nBackLevel];
 
+            // Show the stimulus color
             stimulusRenderer.material.color = colors[colorSequence[currentTrial]];
             trialStartTime = Time.time;
             awaitingResponse = true;
 
-            yield return new WaitForSeconds(stimulusDuration);
-
-            stimulusRenderer.material.color = Color.black;
-
-            yield return new WaitForSeconds(interStimulusInterval);
-
-            if (awaitingResponse)
+            // Wait for input instead of automatically advancing
+            while (awaitingResponse)
             {
-                RecordTrial(false, 0f, "No response");
-                nodeJSConnector.SendNBackEvent("trial-complete", "No response");
+                yield return null;
+                // This loop will exit when HandleResponse is called by button press
             }
 
-            awaitingResponse = false;
+            // The stimulus is already black and feedback has been shown in HandleResponse
+            // Now wait for the inter-stimulus interval before the next trial
+            yield return new WaitForSeconds(interStimulusInterval);
+
             currentTrial++;
         }
 
@@ -319,11 +318,18 @@ public class NBackTask : MonoBehaviour
         var result = targetTrial == isConfirm
             ? targetTrial ? "Correct response" : "Correct rejection"
             : targetTrial ? "Missed target" : "False alarm";
-        RecordTrial(isConfirm, reactionTime, result);
+
+        // First, show visual feedback
+        _ = StartCoroutine(FeedbackFlash());
+
+        // Then, send event to nodejs
         nodeJSConnector.SendNBackEvent("trial-complete", result);
 
+        // Finally, record the trial data
+        RecordTrial(isConfirm, reactionTime, result);
+
+        // Mark that we've received the response
         awaitingResponse = false;
-        _ = StartCoroutine(FeedbackFlash());
     }
 
     IEnumerator FeedbackFlash()
