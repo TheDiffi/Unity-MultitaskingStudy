@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -29,6 +30,8 @@ public class NBackTask : MonoBehaviour
 
     private bool isPaused = false;
     private Coroutine trialCoroutine;
+    private Coroutine debugCoroutine;
+    private bool inDebugMode = false;
 
 
     void Start()
@@ -80,13 +83,67 @@ public class NBackTask : MonoBehaviour
     void DebugMode()
     {
         Debug.Log("Debug mode activated");
-        stimulusRenderer.material.color = Color.magenta;
+        inDebugMode = true;
+
+        // Start color cycling coroutine
+        if (debugCoroutine != null)
+            StopCoroutine(debugCoroutine);
+
+        debugCoroutine = StartCoroutine(CycleColorsInDebugMode());
+
+        // Log start of debug mode
+        nodeJSConnector.SendNBackEvent("debug-mode", "Debug mode activated");
     }
 
     void ExitDebug()
     {
         Debug.Log("Exiting debug mode");
+        inDebugMode = false;
+
+        // Stop color cycling
+        if (debugCoroutine != null)
+        {
+            StopCoroutine(debugCoroutine);
+            debugCoroutine = null;
+        }
+
         stimulusRenderer.material.color = Color.black;
+        nodeJSConnector.SendNBackEvent("debug-mode", "Debug mode deactivated");
+    }
+
+    IEnumerator CycleColorsInDebugMode()
+    {
+        int colorIndex = 0;
+
+        while (inDebugMode)
+        {
+            // Cycle through available colors
+            stimulusRenderer.material.color = colors[colorIndex];
+
+            // Log the current color in debug mode
+            Debug.Log($"Debug mode color: {GetColorNameFromIndex(colorIndex)}");
+
+            // Move to next color
+            colorIndex = (colorIndex + 1) % colors.Length;
+
+            // Wait for 1 second before changing color
+            yield return new WaitForSeconds(1f);
+        }
+    }
+
+    // Helper function to get color name from index - for logging purposes
+    private string GetColorNameFromIndex(int colorIndex)
+    {
+        return colorIndex switch
+        {
+            0 => "Red",
+            1 => "Green",
+            2 => "Blue",
+            3 => "Yellow",
+            4 => "Purple",
+            5 => "White",
+            _ => "Unknown"
+        };
     }
 
     void ExitTask()
@@ -110,66 +167,76 @@ public class NBackTask : MonoBehaviour
     {
         try
         {
-            // Handle data as a dictionary - this should be just the params object
-            if (data is Dictionary<string, object> paramsDict)
+            Dictionary<string, object> paramsDict = null;
+
+            // The data is a JObject, so convert it to a dictionary
+            if (data is Newtonsoft.Json.Linq.JObject jObject)
             {
-                // Extract parameters directly from the dictionary
-                if (paramsDict.TryGetValue("stimDuration", out object stimDurationObj) && stimDurationObj is long stimDurationValue)
-                {
-                    stimulusDuration = stimDurationValue / 1000f;
-                }
-
-                if (paramsDict.TryGetValue("interStimulusInterval", out object isiObj) && isiObj is long isiValue)
-                {
-                    interStimulusInterval = isiValue / 1000f;
-                }
-
-                if (paramsDict.TryGetValue("nBackLevel", out object nBackObj) && nBackObj is long nBackValue)
-                {
-                    nBackLevel = (int)nBackValue;
-                }
-
-                if (paramsDict.TryGetValue("trialsNumber", out object trialsObj) && trialsObj is long trialsValue)
-                {
-                    totalTrials = (int)trialsValue;
-                }
-
-                // Parse the sequence data if available - now a direct array of color strings
-                if (paramsDict.TryGetValue("sequence", out object sequenceObj) && sequenceObj is List<object> sequenceList)
-                {
-                    List<int> colorIndices = new List<int>();
-
-                    // Process each color string in the sequence
-                    foreach (var colorObj in sequenceList)
-                    {
-                        if (colorObj is string colorName)
-                        {
-                            int colorIndex = GetColorIndexFromName(colorName);
-                            if (colorIndex >= 0)
-                            {
-                                colorIndices.Add(colorIndex);
-                            }
-                        }
-                    }
-
-                    if (colorIndices.Count > 0)
-                    {
-                        colorSequence = colorIndices.ToArray();
-                        totalTrials = colorSequence.Length;
-
-                        Debug.Log($"Parsed sequence with {colorSequence.Length} colors");
-                    }
-                }
-
-                nodeJSConnector.SendNBackEvent("configure-success", "Configuration applied successfully");
-                Debug.Log($"Configuration applied: stimDuration={stimulusDuration}s, ISI={interStimulusInterval}s, nBackLevel={nBackLevel}, trials={totalTrials}");
+                paramsDict = jObject.ToObject<Dictionary<string, object>>();
+            }
+            else
+            {
+                nodeJSConnector.SendNBackEvent("configure-error", "Expected JObject format for configuration");
+                Debug.LogError("Failed to parse configuration data: " + (data != null ? data.ToString() : "null"));
                 return;
             }
 
-            nodeJSConnector.SendNBackEvent("configure-error", "Invalid configuration format");
-            Debug.LogError("Failed to parse configuration data: " + (data != null ? data.ToString() : "null"));
+            // Process numeric parameters - we know they are all of type long
+            if (paramsDict.TryGetValue("stimDuration", out object stimDurationObj) && stimDurationObj is long stimDurationLong)
+            {
+                stimulusDuration = stimDurationLong / 1000f;
+            }
+
+            if (paramsDict.TryGetValue("interStimulusInterval", out object isiObj) && isiObj is long isiLong)
+            {
+                interStimulusInterval = isiLong / 1000f;
+            }
+
+            if (paramsDict.TryGetValue("nBackLevel", out object nBackObj) && nBackObj is long nBackLong)
+            {
+                nBackLevel = (int)nBackLong;
+            }
+
+            if (paramsDict.TryGetValue("trialsNumber", out object trialsObj) && trialsObj is long trialsLong)
+            {
+                totalTrials = (int)trialsLong;
+            }
+
+            // Parse the sequence data - working with JArray directly
+            if (paramsDict.TryGetValue("sequence", out object sequenceObj) && sequenceObj is Newtonsoft.Json.Linq.JArray jArray)
+            {
+                List<int> colorIndices = new List<int>();
+
+                foreach (var item in jArray)
+                {
+                    string colorName = item.ToString();
+                    int colorIndex = GetColorIndexFromName(colorName);
+                    if (colorIndex >= 0)
+                    {
+                        colorIndices.Add(colorIndex);
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"Unknown color name in sequence: {colorName}");
+                    }
+                }
+
+                if (colorIndices.Count > 0)
+                {
+                    colorSequence = colorIndices.ToArray();
+                    totalTrials = colorSequence.Length;
+                    Debug.Log($"Parsed sequence with {colorSequence.Length} colors");
+                }
+                else
+                {
+                    Debug.LogWarning("No valid colors found in sequence");
+                }
+            }
+
+            nodeJSConnector.SendNBackEvent("configure-success", "Configuration applied successfully");
+            Debug.Log($"Configuration applied: stimDuration={stimulusDuration}s, ISI={interStimulusInterval}s, nBackLevel={nBackLevel}, trials={totalTrials}");
         }
-        catch (System.Exception ex)
+        catch (Exception ex)
         {
             nodeJSConnector.SendNBackEvent("configure-error", "Error parsing configuration: " + ex.Message);
             Debug.LogException(ex);
@@ -237,6 +304,15 @@ public class NBackTask : MonoBehaviour
 
     void HandleResponse(bool isConfirm)
     {
+        // Log button presses if in debug mode
+        if (inDebugMode)
+        {
+            string buttonType = isConfirm ? "Correct" : "Wrong";
+            Debug.Log($"Debug mode: {buttonType} button pressed");
+            nodeJSConnector.SendNBackEvent("debug-button-press", buttonType);
+            return;
+        }
+
         if (!awaitingResponse) return;
 
         float reactionTime = Time.time - trialStartTime;

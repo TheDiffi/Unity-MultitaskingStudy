@@ -76,60 +76,53 @@ public class InterruptTaskManager : MonoBehaviour
 
         try
         {
-            // Handle data as a dictionary - this should be just the params object
-            if (data is Dictionary<string, object> paramsDict)
+            Dictionary<string, object> paramsDict = null;
+
+            // The data is a JObject, so convert it to a dictionary
+            if (data is Newtonsoft.Json.Linq.JObject jObject)
             {
-                // Extract parameters directly from the dictionary
-                if (paramsDict.TryGetValue("studyId", out object studyIdObj) && studyIdObj is string studyIdStr)
-                {
-                    studyId = studyIdStr;
-                }
-
-                // Convert numeric values to int, regardless of source type
-                if (paramsDict.TryGetValue("sessionNumber", out object sessionObj))
-                {
-                    sessionNumber = ConvertToInt(sessionObj);
-                }
-
-                if (paramsDict.TryGetValue("traversalTime", out object timeObj))
-                {
-                    traversalTime = ConvertToInt(timeObj);
-                }
-
-                if (paramsDict.TryGetValue("trialCount", out object countObj))
-                {
-                    trialCount = ConvertToInt(countObj);
-                }
-
-                // Send success message
-                nodeJSConnector.SendPowerStabilizationEvent("configure-success", "Configuration applied successfully");
-                Debug.Log($"Configuration applied: studyId={studyId}, sessionNumber={sessionNumber}, traversalTime={traversalTime}, trialCount={trialCount}");
-
-                // Update the state
-                currentState = GameState.Idle;
+                paramsDict = jObject.ToObject<Dictionary<string, object>>();
+            }
+            else
+            {
+                nodeJSConnector.SendPowerStabilizationEvent("configure-error", "Expected JObject format for configuration");
+                Debug.LogError("Failed to parse configuration data: " + (data != null ? data.ToString() : "null"));
                 return;
             }
 
-            // If execution reaches here, there was an issue with the format
-            nodeJSConnector.SendPowerStabilizationEvent("configure-error", "Invalid configuration format");
-            Debug.LogError("Failed to parse configuration data: " + (data != null ? data.ToString() : "null"));
+            // Process parameters - we know numeric values are of type long
+            if (paramsDict.TryGetValue("studyId", out object studyIdObj) && studyIdObj is string studyIdStr)
+            {
+                studyId = studyIdStr;
+            }
+
+            if (paramsDict.TryGetValue("sessionNumber", out object sessionObj) && sessionObj is long sessionLong)
+            {
+                sessionNumber = (int)sessionLong;
+            }
+
+            if (paramsDict.TryGetValue("traversalTime", out object timeObj) && timeObj is long timeLong)
+            {
+                traversalTime = (int)timeLong;
+            }
+
+            if (paramsDict.TryGetValue("trialCount", out object countObj) && countObj is long countLong)
+            {
+                trialCount = (int)countLong;
+            }
+
+            // Send success message
+            nodeJSConnector.SendPowerStabilizationEvent("configure-success", "Configuration applied successfully");
+            Debug.Log($"Configuration applied: studyId={studyId}, sessionNumber={sessionNumber}, traversalTime={traversalTime}, trialCount={trialCount}");
+
+            // Update the state
+            currentState = GameState.Idle;
         }
         catch (System.Exception ex)
         {
             nodeJSConnector.SendPowerStabilizationEvent("configure-error", "Error parsing configuration: " + ex.Message);
             Debug.LogException(ex);
         }
-    }
-
-    // Helper method to convert various types to int
-    private int ConvertToInt(object value)
-    {
-        if (value is int or long or float or double) return (int)value;
-        if (value is string stringValue && int.TryParse(stringValue, out int parsedValue)) return parsedValue;
-
-        // Default fallback
-        Debug.LogWarning($"Could not convert value '{value}' to integer. Using default value.");
-        return 0;
     }
 
     private void StartTask()
