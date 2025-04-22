@@ -50,8 +50,7 @@ public class InterruptTaskManager : MonoBehaviour
         nodeJSConnector.RegisterPowerStabilizationHandler("configure", (data) => ConfigureTask(data));
         nodeJSConnector.RegisterPowerStabilizationHandler("start", _ => StartTask());
         nodeJSConnector.RegisterPowerStabilizationHandler("interrupt", _ => InterruptTask());
-        nodeJSConnector.RegisterPowerStabilizationHandler("task-over", _ => TaskOver());
-        nodeJSConnector.RegisterPowerStabilizationHandler("exit", _ => ExitTask());
+        nodeJSConnector.RegisterPowerStabilizationHandler("exit", _ => TaskOver());
         nodeJSConnector.RegisterPowerStabilizationHandler("get-data", _ => GetData());
         nodeJSConnector.RegisterPowerStabilizationHandler("debug", _ => DebugMode());
         nodeJSConnector.RegisterPowerStabilizationHandler("exit-debug", _ => ExitDebugMode());
@@ -63,7 +62,6 @@ public class InterruptTaskManager : MonoBehaviour
         nodeJSConnector.Off(NodeJSConnector.TaskType.PowerStabilization, "configure");
         nodeJSConnector.Off(NodeJSConnector.TaskType.PowerStabilization, "start");
         nodeJSConnector.Off(NodeJSConnector.TaskType.PowerStabilization, "interrupt");
-        nodeJSConnector.Off(NodeJSConnector.TaskType.PowerStabilization, "task-over");
         nodeJSConnector.Off(NodeJSConnector.TaskType.PowerStabilization, "exit");
         nodeJSConnector.Off(NodeJSConnector.TaskType.PowerStabilization, "get-data");
         nodeJSConnector.Off(NodeJSConnector.TaskType.PowerStabilization, "debug");
@@ -203,14 +201,6 @@ public class InterruptTaskManager : MonoBehaviour
         Debug.Log("Task ending...");
         currentState = GameState.Idle;
         nodeJSConnector.SendPowerStabilizationEvent("task-complete", "Task completed");
-    }
-
-    private void ExitTask()
-    {
-        Debug.Log("Exiting task...");
-        currentState = GameState.Idle;
-        trialDataList.Clear();
-        nodeJSConnector.SendPowerStabilizationEvent("task-exited", "Task exited");
     }
 
     private void GetData()
