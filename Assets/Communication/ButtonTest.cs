@@ -46,6 +46,7 @@ public class ButtonTest : MonoBehaviour
     {
         if (nodeJSConnector != null && nodeJSConnector.IsConnected)
         {
+            // Use general Send for general events that don't belong to a specific task
             nodeJSConnector.Send("button_event", "Button was pressed");
             ShowFeedback("Message sent to Node.js");
         }
@@ -64,7 +65,7 @@ public class ButtonTest : MonoBehaviour
     {
         if (nodeJSConnector != null && nodeJSConnector.IsConnected)
         {
-            nodeJSConnector.Send("nback-trial-complete", "Trial complete");
+            nodeJSConnector.SendNBackEvent("trial-complete", "Trial complete");
             ShowFeedback("Message sent to Node.js");
         }
         else
@@ -82,7 +83,7 @@ public class ButtonTest : MonoBehaviour
     {
         if (nodeJSConnector != null && nodeJSConnector.IsConnected)
         {
-            nodeJSConnector.Send("nback-task-complete", "Task complete");
+            nodeJSConnector.SendNBackEvent("task-complete", "Task complete");
             ShowFeedback("Message sent to Node.js");
         }
         else
@@ -100,7 +101,7 @@ public class ButtonTest : MonoBehaviour
     {
         if (nodeJSConnector != null && nodeJSConnector.IsConnected)
         {
-            nodeJSConnector.Send("interrupt-complete", "Interrupt complete");
+            nodeJSConnector.SendPowerStabilizationEvent("interrupt-complete", "Interrupt complete");
             ShowFeedback("Message sent to Node.js");
         }
         else

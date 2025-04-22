@@ -26,15 +26,26 @@ public class NodeJSConnector : MonoBehaviour
     private bool isReconnecting = false;
     private float reconnectTimer = 0f;
 
+    public enum TaskType
+    {
+        PowerStabilization,
+        NBack
+    }
+
     [Serializable]
     private class NodeJSMessage
     {
         public string type;
+        public string task;
         public object data;
     }
 
-    // Dictionary to store event handlers
-    private Dictionary<string, List<Action<object>>> eventHandlers = new Dictionary<string, List<Action<object>>>();
+    // Dictionary to store event handlers - changed to store single actions instead of lists
+    private Dictionary<string, Action<object>> globalEventHandlers = new Dictionary<string, Action<object>>();
+
+    // Dedicated dictionaries for the two specific tasks - changed to store single actions instead of lists
+    private Dictionary<string, Action<object>> powerStabilizationHandlers = new Dictionary<string, Action<object>>();
+    private Dictionary<string, Action<object>> nBackHandlers = new Dictionary<string, Action<object>>();
 
     // Connection status events
     public event Action OnConnected;
@@ -153,20 +164,44 @@ public class NodeJSConnector : MonoBehaviour
                 return;
             }
 
-            // Trigger registered handlers for this event type
-            if (eventHandlers.TryGetValue(message.type, out List<Action<object>> handlers))
+            // Check if we have task-specific handlers for this event
+            if (message.task == "powerstabilization" && powerStabilizationHandlers.TryGetValue(message.type, out Action<object> powerHandler))
             {
-                foreach (var handler in handlers)
+                try
                 {
-                    try
-                    {
-                        handler(message.data);
-                    }
-                    catch (Exception e)
-                    {
-                        Log($"Error in event handler for '{message.type}': {e.Message}", LogType.Error);
-                    }
+                    powerHandler(message.data);
                 }
+                catch (Exception e)
+                {
+                    Log($"Error in power stabilization handler for event '{message.type}': {e.Message}", LogType.Error);
+                }
+            }
+            else if (message.task == "nback" && nBackHandlers.TryGetValue(message.type, out Action<object> nBackHandler))
+            {
+                try
+                {
+                    nBackHandler(message.data);
+                }
+                catch (Exception e)
+                {
+                    Log($"Error in n-back handler for event '{message.type}': {e.Message}", LogType.Error);
+                }
+            }
+            // Fall back to global event handlers for this type
+            else if (globalEventHandlers.TryGetValue(message.type, out Action<object> handler))
+            {
+                try
+                {
+                    handler(message.data);
+                }
+                catch (Exception e)
+                {
+                    Log($"Error in event handler for '{message.type}': {e.Message}", LogType.Error);
+                }
+            }
+            else
+            {
+                Log($"No handlers registered for event type: {message.type}" + (string.IsNullOrEmpty(message.task) ? "" : $" and task: {message.task}"), LogType.Warning);
             }
         }
         catch (Exception e)
@@ -179,27 +214,42 @@ public class NodeJSConnector : MonoBehaviour
     // Register an event handler for a specific event type
     public void On(string eventType, Action<object> handler)
     {
-        if (!eventHandlers.TryGetValue(eventType, out List<Action<object>> handlers))
+        if (globalEventHandlers.ContainsKey(eventType))
         {
-            handlers = new List<Action<object>>();
-            eventHandlers[eventType] = handlers;
+            throw new InvalidOperationException($"An event handler for '{eventType}' is already registered. Only one handler per event type is allowed.");
         }
-
-        handlers.Add(handler);
+        globalEventHandlers[eventType] = handler;
         Log($"Registered handler for event type: {eventType}");
     }
 
     // Remove an event handler
-    public void Off(string eventType, Action<object> handler)
+    public void Off(string eventType)
     {
-        if (eventHandlers.TryGetValue(eventType, out List<Action<object>> handlers))
+        _ = globalEventHandlers.Remove(eventType);
+    }
+
+    // Register an event handler for a specific task and event type
+    public void On(TaskType task, string eventType, Action<object> handler)
+    {
+        Dictionary<string, Action<object>> taskHandlers =
+            task == TaskType.PowerStabilization ? powerStabilizationHandlers : nBackHandlers;
+
+        if (taskHandlers.ContainsKey(eventType))
         {
-            _ = handlers.Remove(handler);
-            if (handlers.Count == 0)
-            {
-                _ = eventHandlers.Remove(eventType);
-            }
+            throw new InvalidOperationException($"An event handler for task '{task}' and event type '{eventType}' is already registered. Only one handler per event type is allowed.");
         }
+
+        taskHandlers[eventType] = handler;
+        Log($"Registered handler for task '{task}' and event type: {eventType}");
+    }
+
+    // Remove a task-specific event handler
+    public void Off(TaskType task, string eventType)
+    {
+        Dictionary<string, Action<object>> taskHandlers =
+            task == TaskType.PowerStabilization ? powerStabilizationHandlers : nBackHandlers;
+
+        _ = taskHandlers.Remove(eventType);
     }
 
     // Send a message with event type and data
@@ -228,6 +278,59 @@ public class NodeJSConnector : MonoBehaviour
             Log($"Error sending message: {e.Message}", LogType.Error);
             OnError?.Invoke(e.Message);
         }
+    }
+
+    // Send a message with task, event type and data
+    public void Send(TaskType task, string eventType, object data)
+    {
+        if (!IsConnected)
+        {
+            Log($"Cannot send event '{eventType}' for task '{task}': WebSocket is not connected", LogType.Warning);
+            return;
+        }
+
+        try
+        {
+            string taskString = task == TaskType.PowerStabilization ? "powerstabilization" : "nback";
+
+            NodeJSMessage message = new NodeJSMessage
+            {
+                type = eventType,
+                task = taskString,
+                data = data
+            };
+
+            string json = JsonConvert.SerializeObject(message);
+            _ = websocket.SendText(json);
+            Log($"Sent event type '{eventType}' for task '{taskString}': {json}");
+        }
+        catch (Exception e)
+        {
+            Log($"Error sending message: {e.Message}", LogType.Error);
+            OnError?.Invoke(e.Message);
+        }
+    }
+
+    // Helper methods for power stabilization task
+    public void RegisterPowerStabilizationHandler(string eventType, Action<object> handler)
+    {
+        On(TaskType.PowerStabilization, eventType, handler);
+    }
+
+    public void SendPowerStabilizationEvent(string eventType, object data)
+    {
+        Send(TaskType.PowerStabilization, eventType, data);
+    }
+
+    // Helper methods for n-back task
+    public void RegisterNBackHandler(string eventType, Action<object> handler)
+    {
+        On(TaskType.NBack, eventType, handler);
+    }
+
+    public void SendNBackEvent(string eventType, object data)
+    {
+        Send(TaskType.NBack, eventType, data);
     }
 
     public void Disconnect()

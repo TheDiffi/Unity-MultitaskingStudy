@@ -9,7 +9,7 @@ Build/
 *.csproj
 *.sln
 /.utmp
-*.zip
+*.zip                                                                        
 *.apk
 RuntimeActionBindings.json
 RuntimeActionBindings.json.meta
