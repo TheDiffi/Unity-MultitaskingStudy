@@ -1590,7 +1590,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1143784096}
   - component: {fileID: 1143784095}
-  - component: {fileID: 1143784097}
   m_Layer: 0
   m_Name: AprilTagDetectionManager
   m_TagString: Untagged
@@ -1613,16 +1612,19 @@ MonoBehaviour:
   m_webCamTextureManager: {fileID: 1823295117}
   m_cameraAnchor: {fileID: 95581292}
   m_decimation: 4
-  m_tagSize_mm: 25
+  m_tagSize: 0.1
   m_markerGameObjectPairs:
   - markerId: 0
     gameObject: {fileID: 204901881}
   - markerId: 1
     gameObject: {fileID: 2804842520265147913}
+  m_cameraCanvas: {fileID: 1854003184}
+  m_resultRawImage: {fileID: 1500740057}
+  m_canvasDistance: 1
   m_smoothingFactor: 0.7
   m_enableSmoothing: 1
   m_tagMaterial: {fileID: 2100000, guid: 5828f113fb726f64eab08340333edd86, type: 2}
-  findMarkers: 1
+  m_debug_fov: 73
 --- !u!4 &1143784096
 Transform:
   m_ObjectHideFlags: 0
@@ -1638,24 +1640,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1143784097
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1143784094}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 461edf8f0bb51a44db63a4a0a5ac1ac9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_webCamTextureManager: {fileID: 1823295117}
-  m_cameraAnchor: {fileID: 1091885308}
-  m_cameraCanvas: {fileID: 1854003184}
-  m_resultRawImage: {fileID: 1500740057}
-  m_canvasDistance: 0.63
-  findMarkers: 1
 --- !u!1 &1381499562
 GameObject:
   m_ObjectHideFlags: 0
