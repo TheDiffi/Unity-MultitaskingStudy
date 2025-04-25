@@ -26,6 +26,8 @@ public class MarkerGameObjectPair
 
 public class AprilTagPassthroughManager : MonoBehaviour
 {
+    public bool findMarkers = true;
+
     [Header("Camera Setup")]
     [SerializeField] private WebCamTextureManager m_webCamTextureManager;
     private PassthroughCameraEye CameraEye => m_webCamTextureManager.Eye;
@@ -35,14 +37,14 @@ public class AprilTagPassthroughManager : MonoBehaviour
     [Header("Tag Detection")]
     [SerializeField] private int m_decimation = 4;
     [SerializeField]
-    [DebugMember(Tweakable = true, Min = 1f, Max = 50f, Category = "AprilTag")]
-    private float m_tagSize_mm = 26f;
+    [DebugMember(Tweakable = true, Min = 23f, Max = 27f, Category = "AprilTag")]
+    private float m_tagSize_mm = 25.5f;
     [SerializeField, Tooltip("List of marker IDs mapped to their corresponding GameObjects")]
     private List<MarkerGameObjectPair> m_markerGameObjectPairs = new List<MarkerGameObjectPair>();
 
-    [DebugMember(Tweakable = true, Min = 0.1f, Max = 1.0f, Category = "AprilTag")]
+    [DebugMember(Tweakable = true, Min = 0.1f, Max = 2.0f, Category = "AprilTag")]
 
-    [SerializeField] private float m_smoothingFactor = 0.5f;
+    [SerializeField] private float m_smoothingFactor = 0.8f;
     [SerializeField] private bool m_enableSmoothing = false;
 
 
@@ -61,7 +63,6 @@ public class AprilTagPassthroughManager : MonoBehaviour
     // State flags
     private bool m_isReady = false;
 
-    public bool findMarkers = true;
 
     /// <summary>
     /// Initializes the camera, permissions, and tag detection system.

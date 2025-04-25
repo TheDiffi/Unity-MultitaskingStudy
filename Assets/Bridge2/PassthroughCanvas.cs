@@ -3,7 +3,6 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using PassthroughCameraSamples;
-using Meta.XR.ImmersiveDebugger;
 
 
 public class PassthroughCanvas : MonoBehaviour
@@ -18,7 +17,6 @@ public class PassthroughCanvas : MonoBehaviour
     [SerializeField] private Canvas m_cameraCanvas;
     [SerializeField] private RawImage m_resultRawImage;
     [SerializeField] private float m_canvasDistance = 1f;
-    [DebugMember(Tweakable = true, Min = 0.1f, Max = 1.0f, Category = "AprilTag")]
 
     // State flags
     private bool m_isReady = false;

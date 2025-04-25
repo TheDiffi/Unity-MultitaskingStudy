@@ -1610,6 +1610,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: df798ec098dabc54abf5cecb521d185d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  findMarkers: 1
   m_webCamTextureManager: {fileID: 1823295117}
   m_cameraAnchor: {fileID: 95581292}
   m_decimation: 4
@@ -1619,10 +1620,9 @@ MonoBehaviour:
     gameObject: {fileID: 204901881}
   - markerId: 1
     gameObject: {fileID: 2804842520265147913}
-  m_smoothingFactor: 0.7
+  m_smoothingFactor: 0.9
   m_enableSmoothing: 1
   m_tagMaterial: {fileID: 2100000, guid: 5828f113fb726f64eab08340333edd86, type: 2}
-  findMarkers: 1
 --- !u!4 &1143784096
 Transform:
   m_ObjectHideFlags: 0
