@@ -76,11 +76,10 @@ public class ADBConnector : MonoBehaviour, IConnector
             string lastMessage = javaReceiverClass.CallStatic<string>("getLastMessage");
             if (!string.IsNullOrEmpty(lastMessage))
             {
-                Debug.Log($"Received message: {lastMessage}");
                 javaReceiverClass.SetStatic("lastMessage", "");
-
                 // Try to decode the message if it's base64 encoded
                 string decodedMessage = DecodeBase64IfEncoded(lastMessage);
+                Debug.Log($"Received message: {decodedMessage}");
 
                 // Process the message if it contains valid JSON
                 if (decodedMessage.Contains("{") && decodedMessage.Contains("}"))
@@ -135,6 +134,12 @@ public class ADBConnector : MonoBehaviour, IConnector
 
     public void Connect()
     {
+        if (IsConnected)
+        {
+            Debug.Log("Already connected to ADB communication.");
+            return;
+        }
+
         isReconnecting = false;
         Debug.Log("Initializing ADB communication...");
 

@@ -71,8 +71,15 @@ public class MasterConnector : MonoBehaviour
             Debug.LogError("No connector set. Please assign a NodeJS or ADB connector.");
             throw new InvalidOperationException("No connector set. Please assign a NodeJS or ADB connector.");
         }
-        // Connect to the selected connector
-        currentConnector.OnConnected += OnConnected;
+        if (currentConnector.IsConnected)
+        {
+            OnConnected();
+        }
+        else
+        {
+            // Connect to the selected connector
+            currentConnector.OnConnected += OnConnected;
+        }
 
         if (sendDebugMessages)
         {
@@ -91,6 +98,7 @@ public class MasterConnector : MonoBehaviour
 
     private void OnConnected()
     {
+        Log("Connection established! Registering message handler.", LogType.Log);
         //register event handlers for connection
         currentConnector.OnMessageReceived += (message) =>
         {
@@ -114,6 +122,7 @@ public class MasterConnector : MonoBehaviour
             // Check if we have task-specific handlers for this event
             if (message.task == "powerstabilization" && powerStabilizationHandlers.TryGetValue(message.type, out Action<object> powerHandler))
             {
+                Debug.Log($"Received power stabilization event: {message.type}");
                 try
                 {
                     powerHandler(message.data);
@@ -125,6 +134,7 @@ public class MasterConnector : MonoBehaviour
             }
             else if (message.task == "nback" && nBackHandlers.TryGetValue(message.type, out Action<object> nBackHandler))
             {
+                Debug.Log($"Received n-back event: {message.type}");
                 try
                 {
                     nBackHandler(message.data);

@@ -1715,9 +1715,9 @@ GameObject:
   m_Component:
   - component: {fileID: 207531864}
   - component: {fileID: 207531863}
+  - component: {fileID: 207531865}
   - component: {fileID: 207531862}
   - component: {fileID: 207531861}
-  - component: {fileID: 207531865}
   m_Layer: 0
   m_Name: TaskManagers
   m_TagString: Untagged
@@ -1807,7 +1807,7 @@ MonoBehaviour:
   maxLogLines: 15
   nodeJSConnector: {fileID: 0}
   adbConnector: {fileID: 207531863}
-  sendDebugMessages: 1
+  sendDebugMessages: 0
 --- !u!1 &228627319
 GameObject:
   m_ObjectHideFlags: 0
