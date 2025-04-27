@@ -19,16 +19,8 @@ public class NBackTask : MonoBehaviour
     [SerializeField] private int totalTrials = 30;
 
     [Header("Communication")]
-    [Tooltip("Set either currentConnector OR ADBConnector, not both")]
     [SerializeField]
-    private NodeJSConnector nodeJSConnector;
-
-    [Tooltip("Set either NodeJSConnector OR ADBConnector, not both")]
-    [SerializeField]
-    private ADBConnector adbConnector;
-
-    // Automatically selects which connector to use (NodeJS has priority if both are set)
-    private IConnector currentConnector => (IConnector)adbConnector ?? nodeJSConnector;
+    private MasterConnector currentConnector;
 
     private Color[] colors = { Color.red, Color.green, Color.blue, Color.yellow, Color.magenta, Color.white };
     private int currentTrial = 0;

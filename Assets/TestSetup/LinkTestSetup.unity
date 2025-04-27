@@ -1717,6 +1717,7 @@ GameObject:
   - component: {fileID: 207531863}
   - component: {fileID: 207531862}
   - component: {fileID: 207531861}
+  - component: {fileID: 207531865}
   m_Layer: 0
   m_Name: TaskManagers
   m_TagString: Untagged
@@ -1737,8 +1738,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   statusText: {fileID: 0}
-  nodeJSConnector: {fileID: 0}
-  adbConnector: {fileID: 207531863}
+  communicator: {fileID: 207531865}
   feedbackDuration: 1.5
 --- !u!114 &207531862
 MonoBehaviour:
@@ -1758,8 +1758,7 @@ MonoBehaviour:
   feedbackDuration: 0.1
   nBackLevel: 1
   totalTrials: 30
-  nodeJSConnector: {fileID: 0}
-  adbConnector: {fileID: 207531863}
+  currentConnector: {fileID: 207531865}
 --- !u!114 &207531863
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1772,13 +1771,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9c21b22d724adb64ea28dd800576a4a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  addTimestampsToLog: 1
-  debugText: {fileID: 0}
-  maxLogLines: 15
   connectOnStart: 1
   reconnectOnDisconnect: 1
   reconnectDelay: 3
-  messagePollInterval: 0.1
+  pollingInterval: 0.1
 --- !u!4 &207531864
 Transform:
   m_ObjectHideFlags: 0
@@ -1794,6 +1790,24 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &207531865
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 207531860}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 57bed0a6603b21d4cb7609ca2831e922, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  addTimestampsToLog: 1
+  debugText: {fileID: 0}
+  maxLogLines: 15
+  nodeJSConnector: {fileID: 0}
+  adbConnector: {fileID: 207531863}
+  sendDebugMessages: 1
 --- !u!1 &228627319
 GameObject:
   m_ObjectHideFlags: 0

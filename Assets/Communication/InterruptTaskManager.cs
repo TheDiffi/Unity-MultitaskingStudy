@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System;
+using static MasterConnector;
 
 /// <summary>
 /// InterruptTaskManager implements the Power Stabilization task as described in the implementation guide.
@@ -9,18 +10,9 @@ using System;
 public class InterruptTaskManager : MonoBehaviour
 {
     [Header("Communication")]
-    [Tooltip("Set either NodeJSConnector OR ADBConnector, not both")]
-    [SerializeField]
-    private NodeJSConnector nodeJSConnector;
+    [SerializeField] private MasterConnector currentConnector;
 
-    [Tooltip("Set either NodeJSConnector OR ADBConnector, not both")]
-    [SerializeField]
-    private ADBConnector adbConnector;
-
-    // Automatically selects which connector to use (NodeJS has priority if both are set)
-    private IConnector currentConnector => (IConnector)adbConnector ?? nodeJSConnector;
     [Header("References")]
-
     [SerializeField] private InterruptRenderer interruptRenderer; // Will be implemented by you later
 
     [Header("Configuration")]
@@ -72,13 +64,13 @@ public class InterruptTaskManager : MonoBehaviour
     private void OnDisable()
     {
         // Using the task-specific Off method
-        currentConnector.Off(IConnector.TaskType.PowerStabilization, "configure");
-        currentConnector.Off(IConnector.TaskType.PowerStabilization, "start");
-        currentConnector.Off(IConnector.TaskType.PowerStabilization, "interrupt");
-        currentConnector.Off(IConnector.TaskType.PowerStabilization, "exit");
-        currentConnector.Off(IConnector.TaskType.PowerStabilization, "get-data");
-        currentConnector.Off(IConnector.TaskType.PowerStabilization, "debug");
-        currentConnector.Off(IConnector.TaskType.PowerStabilization, "exit-debug");
+        currentConnector.Off(TaskType.PowerStabilization, "configure");
+        currentConnector.Off(TaskType.PowerStabilization, "start");
+        currentConnector.Off(TaskType.PowerStabilization, "interrupt");
+        currentConnector.Off(TaskType.PowerStabilization, "exit");
+        currentConnector.Off(TaskType.PowerStabilization, "get-data");
+        currentConnector.Off(TaskType.PowerStabilization, "debug");
+        currentConnector.Off(TaskType.PowerStabilization, "exit-debug");
     }
 
     private void ConfigureTask(object data)

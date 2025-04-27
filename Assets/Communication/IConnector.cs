@@ -37,88 +37,26 @@ public interface IConnector
     bool IsConnected { get; }
 
     /// <summary>
-    /// Establishes a connection
-    /// </summary>
-    void Connect();
-
-    /// <summary>
     /// Terminates the connection
     /// </summary>
     void Disconnect();
 
     /// <summary>
-    /// Registers a global event handler for a specific event type
+    /// Connects to the server
     /// </summary>
-    /// <param name="eventType">The type of event to handle</param>
-    /// <param name="handler">The handler function</param>
-    void On(string eventType, Action<object> handler);
-
-    /// <summary>
-    /// Unregisters a global event handler
-    /// </summary>
-    /// <param name="eventType">The type of event to remove the handler for</param>
-    void Off(string eventType);
-
-    /// <summary>
-    /// Registers a task-specific event handler
-    /// </summary>
-    /// <param name="task">The task this handler is for</param>
-    /// <param name="eventType">The type of event to handle</param>
-    /// <param name="handler">The handler function</param>
-    void On(TaskType task, string eventType, Action<object> handler);
-
-    /// <summary>
-    /// Unregisters a task-specific event handler
-    /// </summary>
-    /// <param name="task">The task this handler is for</param>
-    /// <param name="eventType">The type of event to remove the handler for</param>
-    void Off(TaskType task, string eventType);
+    void Connect();
 
     /// <summary>
     /// Sends a global message with event type and data
     /// </summary>
     /// <param name="eventType">The type of event to send</param>
     /// <param name="data">The data to send</param>
-    void Send(string eventType, object data);
+    void Send(string message);
 
     /// <summary>
-    /// Sends a task-specific message
+    /// Event fired when a message is received from the server
     /// </summary>
-    /// <param name="task">The task this message is for</param>
-    /// <param name="eventType">The type of event to send</param>
-    /// <param name="data">The data to send</param>
-    void Send(TaskType task, string eventType, object data);
+    /// <param name="message">The message received</param>
+    event Action<string> OnMessageReceived;
 
-    /// <summary>
-    /// Helper method to register a handler for the Power Stabilization task
-    /// </summary>
-    /// <param name="eventType">The type of event to handle</param>
-    /// <param name="handler">The handler function</param>
-    void RegisterPowerStabilizationHandler(string eventType, Action<object> handler);
-
-    /// <summary>
-    /// Helper method to send an event for the Power Stabilization task
-    /// </summary>
-    /// <param name="eventType">The type of event to send</param>
-    /// <param name="data">The data to send</param>
-    void SendPowerStabilizationEvent(string eventType, object data);
-
-    /// <summary>
-    /// Helper method to register a handler for the N-Back task
-    /// </summary>
-    /// <param name="eventType">The type of event to handle</param>
-    /// <param name="handler">The handler function</param>
-    void RegisterNBackHandler(string eventType, Action<object> handler);
-
-    /// <summary>
-    /// Helper method to send an event for the N-Back task
-    /// </summary>
-    /// <param name="eventType">The type of event to send</param>
-    /// <param name="data">The data to send</param>
-    void SendNBackEvent(string eventType, object data);
-
-    /// <summary>
-    /// Clears the debug log
-    /// </summary>
-    void ClearLog();
 }
