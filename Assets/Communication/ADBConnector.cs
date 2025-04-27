@@ -2,13 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
-using NativeWebSocket;
 using Newtonsoft.Json;
 using TMPro;
 using static IConnector;
 
-//The websocket implementation is based on the NativeWebSocket library, which is a Unity-compatible WebSocket client for C#.
-public class NodeJSConnector : MonoBehaviour, IConnector
+/// <summary>
+/// This class provides the same interface as NodeJSConnector but uses ADB for communication
+/// instead of WebSockets. It can be used as a drop-in replacement.
+/// </summary>
+public class ADBConnector : MonoBehaviour, IConnector
 {
     [Header("Logging")]
     [SerializeField] private bool addTimestampsToLog = true;
@@ -17,29 +19,31 @@ public class NodeJSConnector : MonoBehaviour, IConnector
 
     private List<string> logLines = new List<string>();
 
-    [Header("WebSocket Configuration")]
-    public string serverAddress = "localhost";
-    public int serverPort = 8080;
+    [Header("Communication Configuration")]
     public bool connectOnStart = true;
     public bool reconnectOnDisconnect = true;
     public float reconnectDelay = 3f;
-
-    private WebSocket websocket;
+    public float messagePollInterval = 0.1f; // How frequently to check for incoming messages
     private bool isReconnecting = false;
     private float reconnectTimer = 0f;
+    private const string MESSAGE_PREFIX = "QUEST_MESSAGE:";
+
+    private AndroidJavaObject broadcastReceiver;
+    private AndroidJavaObject unityActivity;
+    private AndroidJavaObject unityContext;
+    private AndroidJavaClass javaReceiverClass;
+    private const string INTENT_ACTION = "com.test.SIMPLE_MESSAGE";
 
     [Serializable]
-    private class NodeJSMessage
+    private class ADBMessage
     {
         public string type;
         public string task;
         public object data;
     }
 
-    // Dictionary to store event handlers - changed to store single actions instead of lists
+    // Dictionary to store event handlers - similar to NodeJSConnector
     private Dictionary<string, Action<object>> globalEventHandlers = new Dictionary<string, Action<object>>();
-
-    // Dedicated dictionaries for the two specific tasks - changed to store single actions instead of lists
     private Dictionary<string, Action<object>> powerStabilizationHandlers = new Dictionary<string, Action<object>>();
     private Dictionary<string, Action<object>> nBackHandlers = new Dictionary<string, Action<object>>();
 
@@ -48,14 +52,14 @@ public class NodeJSConnector : MonoBehaviour, IConnector
     public event Action OnDisconnected;
     public event Action<string> OnError;
 
-    public bool IsConnected => websocket != null && websocket.State == WebSocketState.Open;
+    public bool IsConnected { get; private set; } = false;
 
     void Start()
     {
         // Initialize log
         if (debugText != null)
         {
-            debugText.text = "WebSocket Log:";
+            debugText.text = "ADB Communication Log:";
         }
 
         if (connectOnStart)
@@ -66,12 +70,6 @@ public class NodeJSConnector : MonoBehaviour, IConnector
 
     void Update()
     {
-        if (websocket != null)
-        {
-            // Required to process WebSocket events
-            websocket.DispatchMessageQueue();
-        }
-
         // Handle reconnection if needed
         if (isReconnecting)
         {
@@ -82,46 +80,76 @@ public class NodeJSConnector : MonoBehaviour, IConnector
                 Connect();
             }
         }
+
+        // Poll for incoming messages
+        if (IsConnected)
+        {
+            CheckForMessages();
+        }
     }
 
-
-    public async void Connect()
+    private void CheckForMessages()
     {
-        if (websocket != null)
+#if UNITY_ANDROID && !UNITY_EDITOR
+        if (javaReceiverClass != null)
         {
-            // Close existing connection if any
-            await websocket.Close();
+            string lastMessage = javaReceiverClass.CallStatic<string>("getLastMessage");
+            if (!string.IsNullOrEmpty(lastMessage))
+            {
+                Log($"Received: {lastMessage}");
+                javaReceiverClass.SetStatic("lastMessage", "");
+                
+                // Process the message if it contains valid JSON
+                if (lastMessage.Contains("{") && lastMessage.Contains("}"))
+                {
+                    // Extract the JSON part of the message
+                    int startIndex = lastMessage.IndexOf('{');
+                    int endIndex = lastMessage.LastIndexOf('}');
+                    if (startIndex >= 0 && endIndex > startIndex)
+                    {
+                        string jsonPart = lastMessage.Substring(startIndex, endIndex - startIndex + 1);
+                        ProcessMessage(jsonPart);
+                    }
+                }
+                else
+                {
+                    Log($"Invalid message format: {lastMessage}", LogType.Warning);
+                }
+            }
         }
+#endif
+    }
 
+    public void Connect()
+    {
         isReconnecting = false;
-        string url = $"ws://{serverAddress}:{serverPort}";
-        Log($"Connecting to WebSocket server at {url}...");
+        Log("Initializing ADB communication...");
 
-        websocket = new WebSocket(url);
-
-        websocket.OnOpen += () =>
+#if UNITY_ANDROID && !UNITY_EDITOR
+        try
         {
-            Log("Connected to Node.js server");
+            var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
+            unityActivity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
+            unityContext = unityActivity.Call<AndroidJavaObject>("getApplicationContext");
+
+            // Create and register the BroadcastReceiver
+            AndroidJavaObject intentFilter = new AndroidJavaObject("android.content.IntentFilter");
+            intentFilter.Call("addAction", INTENT_ACTION);
+
+            broadcastReceiver = new AndroidJavaObject("com.samples.passthroughcamera.SimpleMessageReceiver");
+            unityContext.Call<AndroidJavaObject>("registerReceiver", broadcastReceiver, intentFilter);
+
+            // Get Java class for accessing the lastMessage field
+            javaReceiverClass = new AndroidJavaClass("com.samples.passthroughcamera.SimpleMessageReceiver");
+
+            IsConnected = true;
+            Log("ADB communication initialized successfully");  
             OnConnected?.Invoke();
-        };
-
-        websocket.OnMessage += (bytes) =>
+        }
+        catch (Exception e)
         {
-            string messageText = Encoding.UTF8.GetString(bytes);
-            Log($"Received: {messageText}");
-            ProcessMessage(messageText);
-        };
-
-        websocket.OnError += (e) =>
-        {
-            Log($"WebSocket Error: {e}", LogType.Error);
-            OnError?.Invoke(e);
-        };
-
-        websocket.OnClose += (code) =>
-        {
-            Log($"WebSocket connection closed with code: {code}");
-            OnDisconnected?.Invoke();
+            Log($"Failed to initialize ADB communication: {e.Message}", LogType.Error);
+            OnError?.Invoke(e.Message);
 
             if (reconnectOnDisconnect)
             {
@@ -129,23 +157,13 @@ public class NodeJSConnector : MonoBehaviour, IConnector
                 reconnectTimer = 0f;
                 Log($"Will attempt to reconnect in {reconnectDelay} seconds...");
             }
-        };
-
-        try
-        {
-            await websocket.Connect();
         }
-        catch (Exception e)
-        {
-            Log($"Failed to connect to WebSocket server: {e.Message}", LogType.Error);
-            OnError?.Invoke(e.Message);
-
-            if (reconnectOnDisconnect)
-            {
-                isReconnecting = true;
-                reconnectTimer = 0f;
-            }
-        }
+#else
+        Log("ADB communication is only available on Android devices", LogType.Warning);
+        // Simulate connection for testing in Editor
+        IsConnected = true;
+        OnConnected?.Invoke();
+#endif
     }
 
     // Process received messages and dispatch to appropriate event handlers
@@ -153,7 +171,7 @@ public class NodeJSConnector : MonoBehaviour, IConnector
     {
         try
         {
-            NodeJSMessage message = JsonConvert.DeserializeObject<NodeJSMessage>(messageText);
+            ADBMessage message = JsonConvert.DeserializeObject<ADBMessage>(messageText);
             if (message == null || string.IsNullOrEmpty(message.type))
             {
                 Log($"Received message with invalid format: {messageText}", LogType.Warning);
@@ -202,7 +220,7 @@ public class NodeJSConnector : MonoBehaviour, IConnector
         }
         catch (Exception e)
         {
-            Log($"Error parsing message from Node.js: {e.Message}", LogType.Error);
+            Log($"Error parsing message: {e.Message}", LogType.Error);
             Log($"Raw message: {messageText}", LogType.Error);
         }
     }
@@ -253,20 +271,20 @@ public class NodeJSConnector : MonoBehaviour, IConnector
     {
         if (!IsConnected)
         {
-            Log($"Cannot send event '{eventType}': WebSocket is not connected", LogType.Warning);
+            Log($"Cannot send event '{eventType}': ADB communication is not connected", LogType.Warning);
             return;
         }
 
         try
         {
-            NodeJSMessage message = new NodeJSMessage
+            ADBMessage message = new ADBMessage
             {
                 type = eventType,
                 data = data
             };
 
             string json = JsonConvert.SerializeObject(message);
-            _ = websocket.SendText(json);
+            SendViaADB(json);
             Log($"Sent event type '{eventType}': {json}");
         }
         catch (Exception e)
@@ -281,7 +299,7 @@ public class NodeJSConnector : MonoBehaviour, IConnector
     {
         if (!IsConnected)
         {
-            Log($"Cannot send event '{eventType}' for task '{task}': WebSocket is not connected", LogType.Warning);
+            Log($"Cannot send event '{eventType}' for task '{task}': ADB communication is not connected", LogType.Warning);
             return;
         }
 
@@ -289,7 +307,7 @@ public class NodeJSConnector : MonoBehaviour, IConnector
         {
             string taskString = task == TaskType.PowerStabilization ? "powerstabilization" : "nback";
 
-            NodeJSMessage message = new NodeJSMessage
+            ADBMessage message = new ADBMessage
             {
                 type = eventType,
                 task = taskString,
@@ -297,7 +315,7 @@ public class NodeJSConnector : MonoBehaviour, IConnector
             };
 
             string json = JsonConvert.SerializeObject(message);
-            _ = websocket.SendText(json);
+            SendViaADB(json);
             Log($"Sent event type '{eventType}' for task '{taskString}': {json}");
         }
         catch (Exception e)
@@ -305,6 +323,12 @@ public class NodeJSConnector : MonoBehaviour, IConnector
             Log($"Error sending message: {e.Message}", LogType.Error);
             OnError?.Invoke(e.Message);
         }
+    }
+
+    private void SendViaADB(string messageContent)
+    {
+        // Send the message via Debug.Log with the specific prefix
+        Debug.Log($"{MESSAGE_PREFIX}{messageContent}");
     }
 
     // Helper methods for power stabilization task
@@ -331,19 +355,31 @@ public class NodeJSConnector : MonoBehaviour, IConnector
 
     public void Disconnect()
     {
-        if (websocket != null)
+        if (IsConnected)
         {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            if (unityContext != null && broadcastReceiver != null)
+            {
+                try
+                {
+                    unityContext.Call("unregisterReceiver", broadcastReceiver);
+                }
+                catch (Exception e)
+                {
+                    Log($"Error unregistering receiver: {e.Message}", LogType.Error);
+                }
+            }
+#endif
+            IsConnected = false;
             isReconnecting = false;
-            _ = websocket.Close();
+            Log("ADB communication disconnected");
+            OnDisconnected?.Invoke();
         }
     }
 
-    private async void OnApplicationQuit()
+    private void OnApplicationQuit()
     {
-        if (websocket != null)
-        {
-            await websocket.Close();
-        }
+        Disconnect();
     }
 
     // Clear the log display
@@ -352,7 +388,7 @@ public class NodeJSConnector : MonoBehaviour, IConnector
         logLines.Clear();
         if (debugText != null)
         {
-            debugText.text = "WebSocket Log:";
+            debugText.text = "ADB Communication Log:";
         }
     }
 
@@ -391,7 +427,7 @@ public class NodeJSConnector : MonoBehaviour, IConnector
             }
 
             // Update text
-            StringBuilder sb = new StringBuilder("WebSocket Log:\n");
+            StringBuilder sb = new StringBuilder("ADB Communication Log:\n");
             foreach (var line in logLines)
             {
                 _ = sb.AppendLine(line);
@@ -400,5 +436,4 @@ public class NodeJSConnector : MonoBehaviour, IConnector
             debugText.text = sb.ToString();
         }
     }
-
 }

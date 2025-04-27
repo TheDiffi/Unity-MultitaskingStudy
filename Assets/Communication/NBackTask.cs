@@ -19,8 +19,8 @@ public class NBackTask : MonoBehaviour
     [SerializeField] private int totalTrials = 30;
 
     [SerializeField]
-    private NodeJSConnector nodeJSConnector;
-    private Color[] colors = { Color.red, Color.green, Color.blue, Color.yellow, new Color(0.5f, 0, 0.5f), Color.white };
+    private IConnector nodeJSConnector;
+    private Color[] colors = { Color.red, Color.green, Color.blue, Color.yellow, Color.magenta, Color.white };
     private int currentTrial = 0;
     private int[] colorSequence;
     private bool awaitingResponse;

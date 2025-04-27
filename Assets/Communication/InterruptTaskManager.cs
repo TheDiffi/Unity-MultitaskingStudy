@@ -8,7 +8,7 @@ using System.Collections.Generic;
 public class InterruptTaskManager : MonoBehaviour
 {
     [Header("References")]
-    [SerializeField] private NodeJSConnector nodeJSConnector;
+    [SerializeField] private IConnector nodeJSConnector;
     [SerializeField] private InterruptRenderer interruptRenderer; // Will be implemented by you later
 
     [Header("Configuration")]
@@ -35,7 +35,7 @@ public class InterruptTaskManager : MonoBehaviour
         // Initialize references if needed
         if (nodeJSConnector == null)
         {
-            Debug.LogError("NodeJSConnector component not found. Please assign it in the inspector.");
+            Debug.LogError("IConnector component not found. Please assign it in the inspector.");
         }
 
         if (interruptRenderer == null)
@@ -59,13 +59,13 @@ public class InterruptTaskManager : MonoBehaviour
     private void OnDisable()
     {
         // Using the task-specific Off method
-        nodeJSConnector.Off(NodeJSConnector.TaskType.PowerStabilization, "configure");
-        nodeJSConnector.Off(NodeJSConnector.TaskType.PowerStabilization, "start");
-        nodeJSConnector.Off(NodeJSConnector.TaskType.PowerStabilization, "interrupt");
-        nodeJSConnector.Off(NodeJSConnector.TaskType.PowerStabilization, "exit");
-        nodeJSConnector.Off(NodeJSConnector.TaskType.PowerStabilization, "get-data");
-        nodeJSConnector.Off(NodeJSConnector.TaskType.PowerStabilization, "debug");
-        nodeJSConnector.Off(NodeJSConnector.TaskType.PowerStabilization, "exit-debug");
+        nodeJSConnector.Off(IConnector.TaskType.PowerStabilization, "configure");
+        nodeJSConnector.Off(IConnector.TaskType.PowerStabilization, "start");
+        nodeJSConnector.Off(IConnector.TaskType.PowerStabilization, "interrupt");
+        nodeJSConnector.Off(IConnector.TaskType.PowerStabilization, "exit");
+        nodeJSConnector.Off(IConnector.TaskType.PowerStabilization, "get-data");
+        nodeJSConnector.Off(IConnector.TaskType.PowerStabilization, "debug");
+        nodeJSConnector.Off(IConnector.TaskType.PowerStabilization, "exit-debug");
     }
 
     private void ConfigureTask(object data)

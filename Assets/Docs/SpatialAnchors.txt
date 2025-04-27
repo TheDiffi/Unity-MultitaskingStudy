@@ -1,0 +1,846 @@
+Here some context about spatial anchors 
+
+Spatial Anchors
+Updated: Aug 2, 2024
+Overview
+Spatial anchors enable you to provide users with an environment that is consistent and familiar. Users expect objects they place or encounter to be in the same location the next time they enter the same space. On this page, the following spatial anchor functionalities will be covered:
+
+    Create
+    Save
+    Load
+    Erase
+    Destroy
+    Share
+
+After reading this page you should be able to:
+
+    Recognize the functionalities covered by spatial anchors such as create, save, load, erase, destroy, and share.
+    Explain the lifecycle of a spatial anchor using the OVRSpatialAnchor Unity component.
+    Describe the process of destroying a spatial anchor and its implications on system resources.
+
+For more information, see the Spatial Anchors Overview page.
+Mixed Reality Utility Kit
+For most use cases, consider using the World Locking feature of Mixed Reality Utility Kit (MRUK), which uses anchors to facilitate world-locking without you having to use anchors directly. It does this by subtly adjusting the HMD pose so that virtual objects appear to be world-locked in the physical environment, but you do not need to create (or interact with) anchors yourself.
+There are some cases where you may find anchors useful, such as persistence or sharing. This document covers all aspects of spatial anchors: how to create, persist, and share them.
+Prerequisites
+In order to use spatial anchors, your app’s AndroidManifest must include the following:
+
+<!-- Anchors -->
+<uses-permission android:name="com.oculus.permission.USE_ANCHOR_API" />
+
+<!-- Only required for sharing -->
+<uses-permission android:name="com.oculus.permission.IMPORT_EXPORT_IOT_MAP_DATA" />
+
+The Core SDK can do this automatically by enabling the following settings:
+
+    OVRManager > Quest Features > General > Anchor Support
+    If you intend to share anchors also enable OVRManager > Quest Features > General > Anchor Sharing Support
+
+Project Setup
+Before working with Spatial Anchors, you should make sure you have Unity set up properly for Meta Quest builds. Also, if you can complete Create your First VR App on Meta Quest Headset, and can build the
+Spatial Anchors
+, sample, then you can build apps using shared spatial anchors.
+Implementation
+OVRSpatialAnchor component
+The
+OVRSpatialAnchor
+Unity component encapsulates a spatial anchor’s entire lifecycle, including creation, destruction, and persistence. Each spatial anchor has a unique identifier (UUID) that is assigned upon creation and remains constant throughout the life of the spatial anchor.
+
+    Create a spatial anchor
+    Save a spatial anchor
+    Load a spatial anchor
+    Erase a spatial anchor
+    Destroy a spatial anchor
+    Share a spatial anchor with other users
+
+For a full working example, see the SpatialAnchor scene in the Starter Samples.
+Create a spatial anchor
+To create a new spatial anchor, add the
+OVRSpatialAnchor
+component to any GameObject:
+
+var anchor = gameObject.AddComponent<OVRSpatialAnchor>();
+
+Once it is created, the new
+OVRSpatialAnchor
+is assigned a unique identifier (UUID) represented by a System.Guid in Unity, which you can use to load the spatial anchor after it has been persisted. In the frame following its instantiation, the OVRSpatialAnchor component uses its current transform to generate a new spatial anchor in the Meta Quest runtime. Because the creation of the spatial anchor is asynchronous, its UUID might not be valid immediately. Use the Created property on the OVRSpatialAnchor to ensure anchor creation has completed before you attempt to use it.
+
+IEnumerator CreateSpatialAnchor()
+{
+    var go = new GameObject();
+    var anchor = go.AddComponent<OVRSpatialAnchor>();
+
+    // Wait for the async creation
+    yield return new WaitUntil(() => anchor.Created);
+
+    Debug.Log($"Created anchor {anchor.Uuid}");
+}
+
+Once created, an
+OVRSpatialAnchor
+will update its transform automatically. Because anchors may drift slightly over time, this automatic update keeps the virtual transform world-locked.
+Save a spatial anchor
+Use the
+SaveAnchorAsync
+method to persist an anchor. This operation is also asynchronous:
+
+public async void OnSaveButtonPressed(OVRSpatialAnchor anchor)
+{
+    var result = await anchor.SaveAnchorAsync();
+    if (result.Success)
+    {
+        Debug.Log($"Anchor {anchor.Uuid} saved successfully.");
+    }
+    else
+    {
+        Debug.LogError($"Anchor {anchor.Uuid} failed to save with error {result.Status}");
+    }
+}
+
+You can also save a collection of anchors. This is more efficient than calling
+SaveAnchorAsync
+on each anchor individually:
+
+async void SaveAnchors(IEnumerable<OVRSpatialAnchor> anchors)
+{
+    var result = await OVRSpatialAnchor.SaveAnchorsAsync(anchors);
+    if (result.Success)
+    {
+        Debug.Log($"Anchors saved successfully.");
+    }
+    else
+    {
+        Debug.LogError($"Failed to save {anchors.Count()} anchor(s) with error {result.Status}");
+    }
+}
+
+Load a spatial anchor
+You can load anchors that have been saved or shared with you. Anchors are loaded in three steps:
+
+    Load unbound spatial anchors using their UUID
+    Localize each spatial anchor
+    Bind each spatial anchor to an
+    OVRSpatialAnchor
+
+Load unbound anchors
+The first step is to load a collection of unbound spatial anchors by UUID using
+OVRSpatialAnchor.LoadUnboundAnchorsAsync
+.
+An unbound anchor represents an anchor instance that it not associated with an
+OVRSpatialAnchor
+component. The results of LoadUnboundAnchorsAsync only include anchors that have not already been bound to another OVRSpatialAnchor in the scene.
+This intermediate representation allows you to access the anchor’s pose (position and orientation) before instantiating a GameObject or other content that relies on a correct pose. This avoids situations where you instantiate content at the origin only to have it “snap” to the correct pose on the following frame.
+Example
+
+// This reusable buffer helps reduce pressure on the garbage collector
+List<OVRSpatialAnchor.UnboundAnchor> _unboundAnchors = new();
+
+async void LoadAnchorsByUuid(IEnumerable<Guid> uuids)
+{
+    // Step 1: Load
+    var result = await OVRSpatialAnchor.LoadUnboundAnchorsAsync(uuids, _unboundAnchors);
+
+    if (result.Success)
+    {
+        Debug.Log($"Anchors loaded successfully.");
+    }
+    else
+    {
+        Debug.LogError($"Load failed with error {result.Status}.");
+    }
+}
+
+Localize each anchor
+Localizing an anchor causes the system to determine the anchor’s pose in the world. Anchors should be localized before instantiating a GameObject or other content. Typcially, you should localize an unbound anchor, instantiate a GameObject+OVRSpatialAnchor, then bind the unbound anchor to it. This allows the anchor to be instantiated at the correct pose in the scene, rather than starting at the origin.
+The term localize is in the context of Simultaneous Localization and Mapping (SLAM
+).
+
+async void LoadAnchorsByUuid(IEnumerable<Guid> uuids)
+{
+    // Step 1: Load
+    var result = await OVRSpatialAnchor.LoadUnboundAnchorsAsync(uuids, _unboundAnchors);
+
+    if (result.Success)
+    {
+        Debug.Log($"Anchors loaded successfully.");
+
+        // Note result.Value is the same as _unboundAnchors passed to LoadUnboundAnchorsAsync
+        foreach (var unboundAnchor in result.Value)
+        {
+            // Step 2: Localize
+            unboundAnchor.LocalizeAsync();
+        }
+    }
+    else
+    {
+        Debug.LogError($"Load failed with error {result.Status}.");
+    }
+}
+
+If you have content associated with the spatial anchor, you should make sure that you have localized the spatial anchor before instantiating its associated content. You may skip this step if you do not need the spatial anchor’s pose immediately.
+You can check whether an unbound anchor is localized using the
+OVRSpatialAnchor.UnboundAnchor.Localized
+property:
+
+foreach (var anchor in _unboundAnchors)
+{
+    if (anchor.Localized)
+    {
+        Debug.Log("Anchor localized!");
+    }
+}
+
+LocalizeAsync
+will immediately return with a successful result if the anchor is already localized.
+Localization may fail if the spatial anchor is in a part of the environment that is not perceived or is poorly mapped. In that case, you can try to localize the spatial anchor at a later time. You might also consider guiding the user to look around their environment.
+Bind each spatial anchor to an OVRSpatialAnchor
+In the third step, you bind a spatial anchor to its intended game object’s
+OVRSpatialAnchor
+component. Unbound spatial anchors should be bound to an OVRSpatialAnchor component to manage their lifecycle and to provide access to other features such as save and erase.
+You should bind an unbound
+OVRSpatialAnchor
+immediately upon instantiation with
+OVRSpatialAnchor.UnboundAnchor.BindTo()
+.
+
+// This reusable buffer helps reduce pressure on the garbage collector
+List<OVRSpatialAnchor.UnboundAnchor> _unboundAnchors = new();
+
+async void LoadAnchorsByUuid(IEnumerable<Guid> uuids)
+{
+    // Step 1: Load
+    var result = await OVRSpatialAnchor.LoadUnboundAnchorsAsync(uuids, _unboundAnchors);
+
+    if (result.Success)
+    {
+        Debug.Log($"Anchors loaded successfully.");
+
+        // Note result.Value is the same as _unboundAnchors
+        foreach (var unboundAnchor in result.Value)
+        {
+            // Step 2: Localize
+            unboundAnchor.LocalizeAsync().ContinueWith((success, anchor) =>
+            {
+                if (success)
+                {
+                    // Create a new game object with an OVRSpatialAnchor component
+                    var spatialAnchor = new GameObject($"Anchor {unboundAnchor.Uuid}")
+                        .AddComponent<OVRSpatialAnchor>();
+
+                    // Step 3: Bind
+                    // Because the anchor has already been localized, BindTo will set the
+                    // transform component immediately.
+                    unboundAnchor.BindTo(spatialAnchor);
+                }
+                else
+                {
+                    Debug.LogError($"Localization failed for anchor {unboundAnchor.Uuid}");
+                }
+            }, unboundAnchor);
+        }
+    }
+    else
+    {
+        Debug.LogError($"Load failed with error {result.Status}.");
+    }
+}
+
+If you create a new
+OVRSpatialAnchor
+but do not bind anything to it within the same frame, it will create a new spatial anchor. This allows the OVRSpatialAnchor to either create a new anchor or assume control of an existing anchor.
+Erase a spatial anchor
+Use the
+OVRSpatialAnchor.EraseAnchorAsync
+method to erase a spatial anchor from persistent storage.
+Example
+
+async void OnEraseButtonPressed()
+{
+    var result = await _spatialAnchor.EraseAnchorAsync();
+    if (result.Success)
+    {
+        Debug.Log($"Successfully erased anchor.");
+    }
+    else
+    {
+        Debug.LogError($"Failed to erase anchor {_spatialAnchor.Uuid} with result {result.Status}");
+    }
+}
+
+Similar to saving, it is more efficient to erase a collection of anchors in a single batch:
+
+async void OnEraseButtonPressed(IEnumerable<OVRSpatialAnchor> anchors)
+{
+    var result = await OVRSpatialAnchor.EraseAnchorsAsync(anchors, null);
+    if (result.Success)
+    {
+        Debug.Log($"Successfully erased anchors.");
+    }
+    else
+    {
+        Debug.LogError($"Failed to erase anchors {anchors.Count()} with result {result.Status}");
+    }
+}
+
+You can erase anchors by instance (
+OVRSpatialAnchor
+) or by UUID. This means that you do not need to load an anchor into memory in order to erase it.
+EraseAnchorsAsync
+accepts two arguments: a collection of OVRSpatialAnchor and a collection of Guid. You may specify one or the other or both (i.e., one argument is allowed to be null).
+Destroy spatial anchors
+When you destroy an
+OVRSpatialAnchor
+component, this causes the Meta Quest runtime to stop tracking the anchor, freeing CPU and memory resources.
+Destroying a spatial anchor only destroys the runtime instance and does not affect spatial anchors in persistent storage. To remove an anchor from peristent storage, you must erase the anchor.
+If you previously persisted the anchor, you can reload the destroyed spatial anchor object by its UUID.
+Example
+This example is similar to the OnHideButtonPressed() action in the Anchor.cs script:
+
+public void OnHideButtonPressed()
+{
+    Destroy(this.gameObject);
+}
+
+Learn more
+Continue learning about spatial anchors by reading these pages:
+
+Spatial Anchors Tutorial
+Updated: Aug 2, 2024
+Overview
+Spatial anchors are world-locked frames of reference you can use in your app to place and orient objects that will persist between sessions. This consistency provides users with a sense of continuation and familiarity each time they reenter your game or app.
+As it details in Use Spatial Anchors, the key element to successfully placing a spatial anchor is the
+OVRSpatialAnchor
+component. In this tutorial, you assemble a project similar to the Starter Samples Spatial Anchors Sample, but with many fewer features. Here’s what you do in this tutorial:
+
+    Create a scene that includes the
+    OVRManager
+    and
+    OVRPassthroughLayer
+    .
+    Create two prefab capsules, one for the LeftControllerAnchor, and one for the RightControllerAnchor. These always display at the controller.
+    Create two placement prefabs, one for each controller. These also contain capsules, but these capsules only show when you create them and anchor them in space.
+    Create a minimal script that governs how spatial anchors are created, destroyed, loaded, and erased.
+    Create a GameObject to connect the spatial anchor management code with the capsule and transform prefabs.
+    Add the script to the GameObject, and assign the capsules and transforms to the script’s public members.
+
+See Try Out the App at the end of this topic to read how the app works.
+Prerequisites
+You should first do the Passthrough Basic Tutorial. Once you complete that, you will be ready to do this basic Spatial Anchors tutorial.
+Create a new scene
+
+    In the Project tab, under the Assets folder, create a new folder named SpatialAnchors Tutorial. Then select it to make it the current folder for new objects.
+    In the Project Hierarchy, right click SampleScene, and choose Save Scene As. Give the new scene a unique name, such as SpatialAnchorsTutorial. This becomes the active scene in the Hierarchy.
+    Remove any game objects from the scene, except for the Directional Light and OVRCameraRig.
+
+Set up the major scene components
+The OVRCameraRig, OVRSceneManager, and OVRPassthroughLayer are all components that you need to set up the scene.
+Set up the OVRCameraRig and OVRManager
+The OVRCameraRig is the main camera for your scene. Set it up as follows. These are typical settings for a passthrough scene.
+
+    If you haven’t done so already, select the Main Camera and press the Delete key to remove it from the scene.
+    If you haven’t done so already, in the Project pane, search for the OVRCameraRig prefab. Drag it to the SpatialAnchorsTutorial scene. Then select it to show its properties in the Inspector.
+    On the Inspector tab, do the following:
+    a. Under OVRManager, set Tracking Origin Type to Eye Level. b. Under OVRManager, go to Quest Features > General. c. From the Anchor Support dropdown, select Enabled to turn on anchor support. d. Under Insight Passthrough, check the Enable Passthrough checkbox. e. From the Shared Spatial Anchor Support dropdown, select Supported.
+
+Set up the OVRCameraRigSet up the OVRCameraRig
+Set up the OVRPassthroughLayer
+Adding the OVRPassthroughLayer enables the ball to bounce off of objects in your environment.
+
+    In the Hierarchy pane, select the OVRCameraRig game object.
+    At the bottom of the Inspector, choose Add Component. Search for and select OVR Passthrough Layer.
+    Expand the OVR Passthrough Layer component. Set Projection Surface to Reconstructed and Placement to Underlay
+
+Set Up the OVRPassthroughLayer
+Create the prefab controller capsules
+Create the green and red capsule prefabs that will float near each controller. These capsules will indicate where the smaller anchor capsules will be created.
+
+    In the Project tab, select the SpatialAnchors Tutorial folder to make it the current folder for new objects.
+    From the Assets menu, select Create > Prefab. Name the new prefab SaveablePrefab. Double-click the new prefab to edit it.
+    In the Inspector, add the following values to the Transform component:
+    a. Set the Position property to X = -0.2, Y = 1.03, and Z = 0. b. Set the Rotation property to X = 0, Y = 0, and Z = 0. c. Set the Scale property to X = 0.1, Y = 0.1, and Z = 0.1.
+    In the Hierarchy, right click the SaveablePrefab object, and then choose 3D Object > Capsule. Make sure the new capsule is a child of the SaveablePrefab object.
+    In the Hierarchy, select the new capsule.
+    In the Project pane, search for the Green material. Drag the material into the SpatialAnchors Tutorial Assets folder.
+    In the Inspector, in the Materials property, choose the Green material.
+
+New SATutorialSceneNew SATutorialScene
+Repeat the previous steps, creating a prefab named NonSaveablePrefab, with these changes:
+
+    Instead of a position X value of -0.2, set the Position property to X = 2.0.
+    For this prefab, instead of the Green material, choose the Red material.
+
+Create the Saveable and NonSaveable placement prefabs
+Separate placement prefabs are needed for each controller. These prefabs contain capsules that are created when you press the controller index trigger.
+Create the SaveablePlacement Prefab
+
+    In the Project tab, select the SpatialAnchors Tutorial folder to make it the current folder for new objects.
+    From the Assets menu, select Create > Prefab. Name the new prefab SaveablePlacement.
+    Double-click the SaveablePlacement to edit it.
+    In the Inspector, add the following values to the SaveablePlacement Transform component. a. Set the Position property to X = 0.0, Y = 0.0, and Z = 0.25. b. Set the Rotation property to X = 0, Y = 0, and Z = 0. c. Set the Scale property to X = 0.025, Y = 0.025, and Z = 0.025.
+    In the Hierarchy, right-click the SaveablePlacement object, and then choose Create Empty.
+    Make sure the new object is a child of the SaveablePlacement object, and then name it SaveableTransform.
+    In the Inspector, add the following values to the SaveableTransform Transform component. a. Set the Position property to X = 0.0, Y = 0.1, and Z = 0.1. b. Set the Rotation property to X = 0, Y = 0, and Z = 0. c. Set the Scale property to X = 0.025, Y = 0.025, and Z = 0.025.
+    In the Hierarchy, right click the SaveablePlacement object again, and then choose 3D Object > Capsule. Make sure the new capsule is a child of the SaveablePlacement object.
+    In the Hierarchy, select the new capsule.
+    In the Inspector, add the following values to the Capsule Transform component. a. Set the Position property to X = 0, Y = 0, and Z = 0.125 b. Set the Rotation property to X = 0, Y = 0, and Z = 0. c. Set the Scale property to X = 0.025, Y = 0.025, and Z = 0.025.
+    In the Inspector, in the Materials property, choose the Green material.
+
+Create the NonSaveablePlacement prefab
+
+    From the Assets menu, select Create > Prefab. Name the new prefab NonSaveablePlacement.
+    Repeat the steps for Create the SaveablePlacement Prefab, but use the name NonSaveablePlacement for the prefab, NonSaveableTransform for the new empty object, and choose the Red material instead of the Green.
+
+Add the Anchor Placement prefabs to the left and right controller anchors
+The capsule prefabs are displayed when you place the anchor.
+
+    In the Hierarchy window, expand OVRCameraRig > TrackingSpace > LeftHandAnchor and select LeftControllerAnchor.
+    In the Project search box, search for SaveablePlacement. Drag this object to be a child to the LeftControllerAnchor.
+    In the Hierarchy window, expand OVRCameraRig > TrackingSpace > RightHandAnchor and select RightControllerAnchor.
+    In the Project search box, search for NonSaveablePlacement. Drag this object to be a child to the RightControllerAnchor.
+
+Add the Anchor Prefab
+Create an Anchor Manager Script
+
+    In the Project pane, click your SpatialAnchors Tutorial folder to make it the current location for new objects.
+    From the Assets menu, select Create > C# Script. Name the new script AnchorTutorialUIManager.
+    Double-click the new script to edit it.
+
+The script should do a few things:
+
+    Respond to button presses:
+        The left index trigger creates and saves a green spatial anchor.
+        The left index trigger creates (but does not save) a red spatial anchor.
+        The X button destroys all displayed spatial anchors.
+        The A button loads all saved spatial anchors.
+        The Y button erases all saved spatial anchors.
+    Keep track of which capsules (green and red) are currently displayed, so you can destroy them.
+    Keep track of which capsules are saved (green capsules), to make it easy to load or erase them.
+    Separately keep track of the UUIDs of the capsules saved. You can save these to an external location (such as
+    PlayerPrefs
+
+    ) to make it easy to refer to saved capsules in a future session.
+
+Declare the serialized objects and working variables
+You need six serialized fields: one for each of the four prefabs you just made, plus two more for the transforms that were created with the placement prefabs.
+At the top of your AnchorTutorialUIManager class, add
+
+[SerializeField]
+private GameObject _saveableAnchorPrefab;
+
+[SerializeField]
+private GameObject _saveablePreview;
+
+[SerializeField]
+private Transform _saveableTransform;
+
+[SerializeField]
+private GameObject _nonSaveableAnchorPrefab;
+
+[SerializeField]
+private GameObject _nonSaveablePreview;
+
+[SerializeField]
+private Transform _nonSaveableTransform;
+
+Adding these fields will expose them in the Unity Inspector UI when you add the in the Unity editor later.
+You also need a few private fields in the same class to help create the program:
+
+private List<OVRSpatialAnchor> _anchorInstances = new(); // Active instances (red and green)
+
+private HashSet<Guid> _anchorUuids = new(); // Simulated external location, like PlayerPrefs
+
+private Action<bool, OVRSpatialAnchor.UnboundAnchor> _onLocalized;
+
+Write the Awake() Method
+Make sure your class has an Awake() method, and use it to initialize the class:
+
+private void Awake()
+{
+    if (Instance == null)
+    {
+        Instance = this;
+        _onLocalized = OnLocalized;
+    }
+    else
+    {
+        Destroy(this);
+    }
+}
+
+Instantiate a Create Red or Green Capsule
+You will use the controller index triggers to create each of the capsules. The process is identical for both capsules: you create a spatial anchor and pass it to the CreateAnchor() method (which you will write in a minute). The only main difference between green and red capsules is that with a saveable green capsule, you pass a true value to the CreateAnchor() method.
+In your class’s Update() method, add the following checks for controller input:
+
+if (OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger)) // Create a green capsule
+{
+    // Create a green (savable) spatial anchor
+    var go = Instantiate(_saveableAnchorPrefab, _saveableTransform.position, _saveableTransform.rotation); // Anchor A
+    SetupAnchorAsync(go.AddComponent<OVRSpatialAnchor>(), saveAnchor: true);
+}
+else if (OVRInput.GetDown(OVRInput.Button.SecondaryIndexTrigger)) // Create a red capsule
+{
+    // Create a red (non-savable) spatial anchor.
+    var go = Instantiate(_nonSaveableAnchorPrefab, _nonSaveableTransform.position, _nonSaveableTransform.rotation); // Anchor b
+    SetupAnchorAsync(go.AddComponent<OVRSpatialAnchor>(), saveAnchor: false);
+}
+
+SetupAnchorAsync method will wait for the anchor to be created and localized, and then optionally save the anchor.
+Track and save a green or red capsule
+Because saving an anchor is an asynchronous operation, you will use async/await to make sure the anchor creation is complete before you try to save it. For convenience, you use the same methods for both green and red capsules. The call to SetupAnchorAsync() starts both accounting and saving.
+Yield until the anchor has been established. Then if saveAnchor is true, attempt to save the anchor using SaveAnchorAsync().
+Add this SetupAnchorAsync method to your class:
+
+private async void SetupAnchorAsync(OVRSpatialAnchor anchor, bool saveAnchor)
+{
+    // Keep checking for a valid and localized anchor state
+    if (!await anchor.WhenLocalizedAsync())
+    {
+        Debug.LogError($"Unable to create anchor.");
+        Destroy(anchor.gameObject);
+        return;
+    }
+
+    // Add the anchor to the list of all instances
+    _anchorInstances.Add(anchor);
+
+    // save the savable (green) anchors only
+    if (saveAnchor && (await anchor.SaveAnchorAsync()).Success)
+    {
+        // Remember UUID so you can load the anchor later
+        _anchorUuids.Add(anchor.Uuid);
+    }
+}
+
+After the anchor is created, add it to the list of known saved anchors.
+Destroy displayed anchors
+After you have pressed the two index triggers a few times, _anchorInstances contains all instantiated anchors. In this tutorial, you destroy all green and red capsules from the current scene by pressing the X button.
+Add the following to your Update() method:
+
+if (OVRInput.GetDown(OVRInput.Button.Three)) // x button
+{
+    // Destroy all anchors from the scene, but don't erase them from storage
+    foreach (var anchor in _anchorInstances)
+    {
+        Destroy(anchor.gameObject);
+    }
+
+    // Clear the list of running anchors
+    _anchorInstances.Clear();
+}
+
+Though you destroy all the capsules from the scene, any saveable green capsules you have already saved are still persisted.
+Create a method to load anchors
+You will use the A button to load any saved anchors. Add the following to your Update() method:
+
+if (OVRInput.GetDown(OVRInput.Button.One)) // a button
+{
+    LoadAllAnchors(); // Load saved anchors
+}
+
+As described in Spatial Anchors Overview, loading an anchor is a three-step process:
+
+    Load a spatial anchor from persistent storage using its UUID. At this point it is unbound.
+    Localize each unbound spatial anchor to fix it in its intended virtual location.
+    Bind each spatial anchor to an
+    OVRSpatialAnchor()
+    .
+
+Load and localize anchors
+You load and localize each anchor inside one method. First, you load the anchors using
+OVRSpatialAnchor.LoadUnboundAnchors()
+, then localize each anchor.
+Add the following method to your class:
+
+public async void LoadAllAnchors()
+{
+    // Load and localize
+    var unboundAnchors = new List<OVRSpatialAnchor.UnboundAnchor>();
+    var result = await OVRSpatialAnchor.LoadUnboundAnchorsAsync(_anchorUuids, unboundAnchors);
+
+    if (result.Success)
+    {
+        foreach (var anchor in unboundAnchors)
+        {
+            anchor.LocalizeAsync().ContinueWith(_onLocalized, anchor);
+        }
+    }
+    else
+    {
+        Debug.LogError($"Load anchors failed with {result.Status}.");
+    }
+}
+
+Bind anchors
+In this tutorial, you use a delegate to bind the anchor and add it back to the scene. Add the following method to your class:
+
+private void OnLocalized(bool success, OVRSpatialAnchor.UnboundAnchor unboundAnchor)
+{
+    var pose = unboundAnchor.Pose;
+    var go = Instantiate(_saveableAnchorPrefab, pose.position, pose.rotation);
+    var anchor = go.AddComponent<OVRSpatialAnchor>();
+
+    unboundAnchor.BindTo(anchor);
+
+    // Add the anchor to the running total
+    _anchorInstances.Add(anchor);
+}
+
+Erase saved anchors
+You use the Y button press to erase all the anchors. This doesn’t remove them from the scene, just from storage.
+Add the following to your Update() method:
+
+// Erase all saved (green) anchors
+if (OVRInput.GetDown(OVRInput.Button.Four)) // y button
+{
+    EraseAllAnchors();
+}
+
+OVRSpatialAnchor.EraseAnchorsAsync()
+is an asynchronous method, so you can await the result as you did for saving anchors. After you successfully erase anchors from storage, you also need to clear the saved anchors array.
+Add the following method to your class:
+
+public async void EraseAllAnchors()
+{
+    var result = await OVRSpatialAnchor.EraseAnchorsAsync(anchors: null, uuids: _anchorUuids);
+    if (result.Success)
+    {
+        // Erase our reference lists
+        _anchorUuids.Clear();
+
+        Debug.Log($"Anchors erased.");
+    }
+    else
+    {
+        Debug.LogError($"Anchors NOT erased {result.Status}");
+    }
+}
+
+That’s the end of the script. Save it and return to the Unity editor.
+Create and configure a TutorialManager Game Object
+The TutorialManager Game Object connects the anchor prefab with the spatial anchor loader and the script you just wrote.
+
+    From the Game Object menu, choose Create Empty. Name the new object TutorialManager, and make it a peer of your scene’s OVRCameraRig.
+    In the Hierarchy Window, click the new TutorialManager game object. Then in the Inspector, select Add Component.
+    Search for and select the script you just wrote, AnchorTutorialUIManager. You’ll see the six properties you need to configure.
+    In the Project search box, search for SaveablePrefab. Drag this object to the Inspector, to the Saveable Anchor Prefab field in the Anchor Tutorial U IManager (Script) component.
+    In the Project search box, search for SaveablePlacement. Drag this object to the Inspector, to the Saveable Preview field in the Anchor Tutorial U IManager (Script) component.
+    In the Hierarchy window, expand LeftControllerAnchor > SaveablePlacement. Drag the SaveableTransform to the Inspector, to the Saveable Transform (Transform) field in the Anchor Tutorial U IManager (Script) component.
+    In the Project search box, search for NonSaveablePrefab. Drag this object to the Inspector, to the Non Saveable Anchor Prefab field in the Anchor Tutorial U IManager (Script) component.
+    In the Project search box, search for NonSaveablePlacement. Drag this object to the Inspector, to the Non Saveable Preview field in the Anchor Tutorial U IManager (Script) component.
+    In the Hierarchy window, expand RightControllerAnchor > Non SaveablePlacement. Drag the NonSaveableTransform to the Inspector, to the Non Saveable Transform (Transform) field in the Anchor Tutorial U IManager (Script) component.
+
+TutorialManager Game Object
+Check the Project Setup tool
+You are almost done. Before you build, you need to run the Project Setup tool. This is to make sure that you haven’t introduced any complications with our combination of new and existing game objects.
+
+    Save your project and your scene.
+    On the menu, click Edit > Project Settings > Meta XR, and select the Android tab.
+    Check the Checklist for warnings or errors. Choosing Apply All and/or Fix will prompt Unity to resolve issues.
+
+Check the Project Setup Tool
+Save and run the project
+
+    From the File menu, choose Save to save your scene and Save Project to save the project.
+    From the File menu, choose Build Settings to open the Build Settings* window.
+    Make sure your Meta Quest headset is the selected device in the Run Device dropdown. If you don’t see your headset in the list, click Refresh.
+    Click Add Open Scenes to add your scene to the build. Deselect and remove any other scenes from the selection window.
+    Click the Build and Run button to launch the program onto your headset.
+
+Outcome
+When you first start the app, you’ll see that each controller displays a capsule. The left controller shows a green capsule, and the right controller shows a red capsule. Green capsules are saved when they are created, but red ones are never saved.
+
+    Press the left index trigger one or more times to create small green capsules. The anchor for each capsule is automatically saved to the headset.
+    Press the right index trigger one or more times to create small red capsules. These anchors are not saved to the headset.
+    Press the X button to destroy all capsules. All capsules are removed from your view.
+    Press the A button to load all saved capsules. Only green capsules reappear.
+    Press the Y button to erase all green anchors. The green capsules remain on the screen.
+    Press the X button to destroy all capsules. All capsules are removed from your view.
+    Press the A button to load all saved capsules. Because you erased them, no green capsules reappear.
+
+Spatial Anchors Added at Runtime
+Learn more
+Continue learning about spatial anchors on the other pages of this documentation:
+
+    SSA Walkthrough in the Discover Sample
+    Troubleshooting
+
+You can find more examples of using spatial anchors with Meta Quest in the oculus-samples GitHub repository:
+
+    Unity-Discover
+
+Unity-SharedSpatialAnchors
+Unity-StarterSamples
+You can find Unity API Reference here:
+
+    Unity API Reference
+
+To get started with Meta Quest Development in Unity, please see the following documentation:
+
+    Get Started with Meta Quest Development in Unity
+
+Appendix: The Full AnchorTutorialUIManager.cs File.
+
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class AnchorTutorialUIManager : MonoBehaviour
+{
+    /// <summary>
+    /// Anchor Tutorial UI manager singleton instance
+    /// </summary>
+    public static AnchorTutorialUIManager Instance;
+
+    [SerializeField]
+    private GameObject _saveableAnchorPrefab;
+
+    [SerializeField]
+    private GameObject _saveablePreview;
+
+    [SerializeField]
+    private Transform _saveableTransform;
+
+    [SerializeField]
+    private GameObject _nonSaveableAnchorPrefab;
+
+    [SerializeField]
+    private GameObject _nonSaveablePreview;
+
+    [SerializeField]
+    private Transform _nonSaveableTransform;
+
+    private List<OVRSpatialAnchor> _anchorInstances = new(); // Active instances (red and green)
+
+    private HashSet<Guid> _anchorUuids = new(); // Simulated external location, like PlayerPrefs
+
+    private Action<bool, OVRSpatialAnchor.UnboundAnchor> _onLocalized;
+
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            _onLocalized = OnLocalized;
+        }
+        else
+        {
+            Destroy(this);
+        }
+    }
+
+    // This script responds to five button events:
+    //
+    // Left trigger: Create a saveable (green) anchor.
+    // Right trigger: Create a non-saveable (red) anchor.
+    // A: Load, Save and display all saved anchors (green only)
+    // X: Destroy all runtime anchors (red and green)
+    // Y: Erase all anchors (green only)
+    // others: no action
+    void Update()
+    {
+        if (OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger)) // Create a green capsule
+        {
+            // Create a green (savable) spatial anchor
+            var go = Instantiate(_saveableAnchorPrefab, _saveableTransform.position, _saveableTransform.rotation); // Anchor A
+            SetupAnchorAsync(go.AddComponent<OVRSpatialAnchor>(), saveAnchor: true);
+        }
+        else if (OVRInput.GetDown(OVRInput.Button.SecondaryIndexTrigger)) // Create a red capsule
+        {
+            // Create a red (non-savable) spatial anchor.
+            var go = Instantiate(_nonSaveableAnchorPrefab, _nonSaveableTransform.position, _nonSaveableTransform.rotation); // Anchor b
+            SetupAnchorAsync(go.AddComponent<OVRSpatialAnchor>(), saveAnchor: false);
+        }
+        else if (OVRInput.GetDown(OVRInput.Button.One)) // a button
+        {
+            LoadAllAnchors();
+        }
+        else if (OVRInput.GetDown(OVRInput.Button.Three)) // x button
+        {
+            // Destroy all anchors from the scene, but don't erase them from storage
+            foreach (var anchor in _anchorInstances)
+            {
+                Destroy(anchor.gameObject);
+            }
+
+            // Clear the list of running anchors
+            _anchorInstances.Clear();
+        }
+        else if (OVRInput.GetDown(OVRInput.Button.Four)) // y button
+        {
+            EraseAllAnchors();
+        }
+    }
+
+    // You need to make sure the anchor is ready to use before you save it.
+    // Also, only save if specified
+    private async void SetupAnchorAsync(OVRSpatialAnchor anchor, bool saveAnchor)
+    {
+        // Keep checking for a valid and localized anchor state
+        if (!await anchor.WhenLocalizedAsync())
+        {
+            Debug.LogError($"Unable to create anchor.");
+            Destroy(anchor.gameObject);
+            return;
+        }
+
+        // Add the anchor to the list of all instances
+        _anchorInstances.Add(anchor);
+
+        // You save the savable (green) anchors only
+        if (saveAnchor && (await anchor.SaveAnchorAsync()).Success)
+        {
+            // Remember UUID so you can load the anchor later
+            _anchorUuids.Add(anchor.Uuid);
+        }
+    }
+
+    /******************* Load Anchor Methods **********************/
+    public async void LoadAllAnchors()
+    {
+        // Load and localize
+        var unboundAnchors = new List<OVRSpatialAnchor.UnboundAnchor>();
+        var result = await OVRSpatialAnchor.LoadUnboundAnchorsAsync(_anchorUuids, unboundAnchors);
+
+        if (result.Success)
+        {
+            foreach (var anchor in unboundAnchors)
+            {
+                anchor.LocalizeAsync().ContinueWith(_onLocalized, anchor);
+            }
+        }
+        else
+        {
+            Debug.LogError($"Load anchors failed with {result.Status}.");
+        }
+    }
+
+    private void OnLocalized(bool success, OVRSpatialAnchor.UnboundAnchor unboundAnchor)
+    {
+        var pose = unboundAnchor.Pose;
+        var go = Instantiate(_saveableAnchorPrefab, pose.position, pose.rotation);
+        var anchor = go.AddComponent<OVRSpatialAnchor>();
+
+        unboundAnchor.BindTo(anchor);
+
+        // Add the anchor to the running total
+        _anchorInstances.Add(anchor);
+    }
+
+    /******************* Erase Anchor Methods *****************/
+    // If the Y button is pressed, erase all anchors saved
+    // in the headset, but don't destroy them. They should remain displayed.
+    public async void EraseAllAnchors()
+    {
+        var result = await OVRSpatialAnchor.EraseAnchorsAsync(anchors: null, uuids: _anchorUuids);
+        if (result.Success)
+        {
+            // Erase our reference lists
+            _anchorUuids.Clear();
+
+            Debug.Log($"Anchors erased.");
+        }
+        else
+        {
+            Debug.LogError($"Anchors NOT erased {result.Status}");
+        }
+    }

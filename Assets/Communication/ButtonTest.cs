@@ -9,7 +9,7 @@ public class ButtonTest : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private TextMeshProUGUI statusText;
-    [SerializeField] private NodeJSConnector nodeJSConnector;
+    [SerializeField] private IConnector nodeJSConnector;
 
     [Header("Configuration")]
     [SerializeField] private float feedbackDuration = 1.5f;
@@ -19,7 +19,7 @@ public class ButtonTest : MonoBehaviour
         // Initialize references if needed
         if (nodeJSConnector == null)
         {
-            nodeJSConnector = FindFirstObjectByType<NodeJSConnector>();
+            nodeJSConnector = FindFirstObjectByType<ADBConnector>();
         }
 
         if (statusText != null)
@@ -124,8 +124,8 @@ public class ButtonTest : MonoBehaviour
         }
         else
         {
-            Debug.LogError("NodeJSConnector component not found");
-            ShowFeedback("Error: NodeJSConnector not found", Color.red);
+            Debug.LogError("IConnector component not found");
+            ShowFeedback("Error: IConnector not found", Color.red);
         }
     }
 
@@ -167,8 +167,8 @@ public class ButtonTest : MonoBehaviour
         }
         else
         {
-            Debug.LogError("NodeJSConnector component not found");
-            ShowFeedback("Error: NodeJSConnector not found", Color.red);
+            Debug.LogError("IConnector component not found");
+            ShowFeedback("Error: IConnector not found", Color.red);
         }
     }
 

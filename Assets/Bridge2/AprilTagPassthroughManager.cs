@@ -37,8 +37,8 @@ public class AprilTagPassthroughManager : MonoBehaviour
     [Header("Tag Detection")]
     [SerializeField] private int m_decimation = 4;
     [SerializeField]
-    [DebugMember(Tweakable = true, Min = 23f, Max = 27f, Category = "AprilTag")]
-    private float m_tagSize_mm = 25.5f;
+    [DebugMember(Tweakable = true, Min = 24f, Max = 28f, Category = "AprilTag")]
+    private float m_tagSize_mm = 26.5f;
     [SerializeField, Tooltip("List of marker IDs mapped to their corresponding GameObjects")]
     private List<MarkerGameObjectPair> m_markerGameObjectPairs = new List<MarkerGameObjectPair>();
 
@@ -62,7 +62,37 @@ public class AprilTagPassthroughManager : MonoBehaviour
 
     // State flags
     private bool m_isReady = false;
+    private Dictionary<int, bool> m_tagVisibilityStatus = new Dictionary<int, bool>();
 
+    /// <summary>
+    /// Checks if a specified tag is currently visible
+    /// </summary>
+    /// <param name="tagId">The ID of the tag to check</param>
+    /// <returns>True if the tag is currently visible, false otherwise</returns>
+    public bool IsTagVisible(int tagId)
+    {
+        return m_tagVisibilityStatus.ContainsKey(tagId) && m_tagVisibilityStatus[tagId];
+    }
+
+    /// <summary>
+    /// Gets the current world transform for a specified tag
+    /// </summary>
+    /// <param name="tagId">The ID of the tag to get the transform for</param>
+    /// <param name="position">Output parameter that will contain the tag's position</param>
+    /// <param name="rotation">Output parameter that will contain the tag's rotation</param>
+    /// <returns>True if tag was found and transform was retrieved, false otherwise</returns>
+    public bool TryGetTagTransform(int tagId, out Vector3 position, out Quaternion rotation)
+    {
+        if (m_prevPoseDataDictionary.TryGetValue(tagId, out PoseData poseData) && IsTagVisible(tagId))
+        {
+            (position, rotation) = MovePoseToCameraCoordiantes(poseData.pos, poseData.rot);
+            return true;
+        }
+
+        position = Vector3.zero;
+        rotation = Quaternion.identity;
+        return false;
+    }
 
     /// <summary>
     /// Initializes the camera, permissions, and tag detection system.
