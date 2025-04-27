@@ -19,7 +19,7 @@ public class NBackTask : MonoBehaviour
     [SerializeField] private int totalTrials = 30;
 
     [Header("Communication")]
-    [Tooltip("Set either NodeJSConnector OR ADBConnector, not both")]
+    [Tooltip("Set either currentConnector OR ADBConnector, not both")]
     [SerializeField]
     private NodeJSConnector nodeJSConnector;
 
@@ -54,15 +54,15 @@ public class NBackTask : MonoBehaviour
         }
 
         // Register handlers using the NBack task-specific registration method
-        nodeJSConnector.RegisterNBackHandler("start", _ => StartTask());
-        nodeJSConnector.RegisterNBackHandler("pause", _ => PauseTask());
-        nodeJSConnector.RegisterNBackHandler("resume", _ => ResumeTask());
-        nodeJSConnector.RegisterNBackHandler("stop", _ => ExitTask());
-        nodeJSConnector.RegisterNBackHandler("debug", _ => DebugMode());
-        nodeJSConnector.RegisterNBackHandler("exit-debug", _ => ExitDebug());
-        nodeJSConnector.RegisterNBackHandler("exit", _ => ExitTask());
-        nodeJSConnector.RegisterNBackHandler("get-data", _ => GetData());
-        nodeJSConnector.RegisterNBackHandler("configure", (data) => ConfigureTask(data));
+        currentConnector.RegisterNBackHandler("start", _ => StartTask());
+        currentConnector.RegisterNBackHandler("pause", _ => PauseTask());
+        currentConnector.RegisterNBackHandler("resume", _ => ResumeTask());
+        currentConnector.RegisterNBackHandler("stop", _ => ExitTask());
+        currentConnector.RegisterNBackHandler("debug", _ => DebugMode());
+        currentConnector.RegisterNBackHandler("exit-debug", _ => ExitDebug());
+        currentConnector.RegisterNBackHandler("exit", _ => ExitTask());
+        currentConnector.RegisterNBackHandler("get-data", _ => GetData());
+        currentConnector.RegisterNBackHandler("configure", (data) => ConfigureTask(data));
     }
 
     void StartTask()
@@ -74,7 +74,7 @@ public class NBackTask : MonoBehaviour
         {
             string errorMessage = "No color sequence configured. Configure the task before starting.";
             Debug.LogError(errorMessage);
-            nodeJSConnector.SendNBackEvent("configure-error", errorMessage);
+            currentConnector.SendNBackEvent("configure-error", errorMessage);
 
             // Don't start the trials
             return;
@@ -94,7 +94,7 @@ public class NBackTask : MonoBehaviour
     {
         // Resume is just unpausing the task
         isPaused = false;
-        nodeJSConnector.SendNBackEvent("task-resumed", "Task resumed");
+        currentConnector.SendNBackEvent("task-resumed", "Task resumed");
     }
 
     void DebugMode()
@@ -109,7 +109,7 @@ public class NBackTask : MonoBehaviour
         debugCoroutine = StartCoroutine(CycleColorsInDebugMode());
 
         // Log start of debug mode
-        nodeJSConnector.SendNBackEvent("debug-mode", "Debug mode activated");
+        currentConnector.SendNBackEvent("debug-mode", "Debug mode activated");
     }
 
     void ExitDebug()
@@ -125,7 +125,7 @@ public class NBackTask : MonoBehaviour
         }
 
         stimulusRenderer.material.color = Color.black;
-        nodeJSConnector.SendNBackEvent("debug-mode", "Debug mode deactivated");
+        currentConnector.SendNBackEvent("debug-mode", "Debug mode deactivated");
     }
 
     IEnumerator CycleColorsInDebugMode()
@@ -174,10 +174,10 @@ public class NBackTask : MonoBehaviour
     void GetData()
     {
         foreach (var data in trialDataList)
-            nodeJSConnector.SendNBackEvent("trial-data", data.ToString());
+            currentConnector.SendNBackEvent("trial-data", data.ToString());
 
         // Change from "nback-data-complete" to match what the Node.js controller expects
-        nodeJSConnector.SendNBackEvent("data-complete", "Data transfer complete");
+        currentConnector.SendNBackEvent("data-complete", "Data transfer complete");
     }
 
     void ConfigureTask(object data)
@@ -193,7 +193,7 @@ public class NBackTask : MonoBehaviour
             }
             else
             {
-                nodeJSConnector.SendNBackEvent("configure-error", "Expected JObject format for configuration");
+                currentConnector.SendNBackEvent("configure-error", "Expected JObject format for configuration");
                 Debug.LogError("Failed to parse configuration data: " + (data != null ? data.ToString() : "null"));
                 return;
             }
@@ -250,12 +250,12 @@ public class NBackTask : MonoBehaviour
                 }
             }
 
-            nodeJSConnector.SendNBackEvent("configure-success", "Configuration applied successfully");
+            currentConnector.SendNBackEvent("configure-success", "Configuration applied successfully");
             Debug.Log($"Configuration applied: stimDuration={stimulusDuration}s, ISI={interStimulusInterval}s, nBackLevel={nBackLevel}, trials={totalTrials}");
         }
         catch (Exception ex)
         {
-            nodeJSConnector.SendNBackEvent("configure-error", "Error parsing configuration: " + ex.Message);
+            currentConnector.SendNBackEvent("configure-error", "Error parsing configuration: " + ex.Message);
             Debug.LogException(ex);
         }
     }
@@ -305,7 +305,7 @@ public class NBackTask : MonoBehaviour
             currentTrial++;
         }
 
-        nodeJSConnector.SendNBackEvent("task-complete", "Task complete");
+        currentConnector.SendNBackEvent("task-complete", "Task complete");
     }
 
     public void OnCorrectButtonPressed()
@@ -325,7 +325,7 @@ public class NBackTask : MonoBehaviour
         {
             string buttonType = isConfirm ? "Correct" : "Wrong";
             Debug.Log($"Debug mode: {buttonType} button pressed");
-            nodeJSConnector.SendNBackEvent("debug-button-press", buttonType);
+            currentConnector.SendNBackEvent("debug-button-press", buttonType);
             return;
         }
 
@@ -340,7 +340,7 @@ public class NBackTask : MonoBehaviour
         _ = StartCoroutine(FeedbackFlash());
 
         // Then, send event to nodejs
-        nodeJSConnector.SendNBackEvent("trial-complete", result);
+        currentConnector.SendNBackEvent("trial-complete", result);
 
         // Finally, record the trial data
         RecordTrial(isConfirm, reactionTime, result);
