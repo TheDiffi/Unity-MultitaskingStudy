@@ -1,6 +1,7 @@
 using UnityEngine;
 using TMPro;
 using System.Collections;
+using System;
 
 /// <summary>
 /// ButtonTest script containing various functions that can be attached to TextMesh Pro UI buttons.
@@ -9,17 +10,28 @@ public class ButtonTest : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private TextMeshProUGUI statusText;
-    [SerializeField] private IConnector nodeJSConnector;
+    [Header("Communication")]
+    [Tooltip("Set either NodeJSConnector OR ADBConnector, not both")]
+    [SerializeField]
+    private NodeJSConnector nodeJSConnector;
+
+    [Tooltip("Set either NodeJSConnector OR ADBConnector, not both")]
+    [SerializeField]
+    private ADBConnector adbConnector;
+
+    // Automatically selects which connector to use (NodeJS has priority if both are set)
+    private IConnector currentConnector => (IConnector)adbConnector ?? nodeJSConnector;
 
     [Header("Configuration")]
     [SerializeField] private float feedbackDuration = 1.5f;
 
     private void Start()
     {
-        // Initialize references if needed
-        if (nodeJSConnector == null)
+        // Check if the connector is set and connected
+        if (currentConnector == null)
         {
-            nodeJSConnector = FindFirstObjectByType<ADBConnector>();
+            Debug.LogError("No connector set. Please assign a NodeJS or ADB connector.");
+            throw new InvalidOperationException("No connector set. Please assign a NodeJS or ADB connector.");
         }
 
         if (statusText != null)
@@ -44,10 +56,10 @@ public class ButtonTest : MonoBehaviour
     /// </summary>
     public void SendTestMessage()
     {
-        if (nodeJSConnector != null && nodeJSConnector.IsConnected)
+        if (currentConnector != null && currentConnector.IsConnected)
         {
             // Use general Send for general events that don't belong to a specific task
-            nodeJSConnector.Send("button_event", "Button was pressed");
+            currentConnector.Send("button_event", "Button was pressed");
             ShowFeedback("Message sent to Node.js");
         }
         else
@@ -63,9 +75,9 @@ public class ButtonTest : MonoBehaviour
     /// </summary>
     public void SendTrialComplete()
     {
-        if (nodeJSConnector != null && nodeJSConnector.IsConnected)
+        if (currentConnector != null && currentConnector.IsConnected)
         {
-            nodeJSConnector.SendNBackEvent("trial-complete", "Trial complete");
+            currentConnector.SendNBackEvent("trial-complete", "Trial complete");
             ShowFeedback("Message sent to Node.js");
         }
         else
@@ -81,9 +93,9 @@ public class ButtonTest : MonoBehaviour
     /// </summary>
     public void SendTaskComplete()
     {
-        if (nodeJSConnector != null && nodeJSConnector.IsConnected)
+        if (currentConnector != null && currentConnector.IsConnected)
         {
-            nodeJSConnector.SendNBackEvent("task-complete", "Task complete");
+            currentConnector.SendNBackEvent("task-complete", "Task complete");
             ShowFeedback("Message sent to Node.js");
         }
         else
@@ -99,9 +111,9 @@ public class ButtonTest : MonoBehaviour
     /// </summary>
     public void SendInterruptComplete()
     {
-        if (nodeJSConnector != null && nodeJSConnector.IsConnected)
+        if (currentConnector != null && currentConnector.IsConnected)
         {
-            nodeJSConnector.SendPowerStabilizationEvent("interrupt-complete", "Interrupt complete");
+            currentConnector.SendPowerStabilizationEvent("interrupt-complete", "Interrupt complete");
             ShowFeedback("Message sent to Node.js");
         }
         else
@@ -117,9 +129,9 @@ public class ButtonTest : MonoBehaviour
     /// </summary>
     public void ConnectToNodeJS()
     {
-        if (nodeJSConnector != null)
+        if (currentConnector != null)
         {
-            nodeJSConnector.Connect();
+            currentConnector.Connect();
             ShowFeedback("Connecting to Node.js...", Color.yellow);
         }
         else
@@ -135,9 +147,9 @@ public class ButtonTest : MonoBehaviour
     /// </summary>
     public void DisconnectFromNodeJS()
     {
-        if (nodeJSConnector != null && nodeJSConnector.IsConnected)
+        if (currentConnector != null && currentConnector.IsConnected)
         {
-            nodeJSConnector.Disconnect();
+            currentConnector.Disconnect();
             ShowFeedback("Disconnected from Node.js");
         }
         else
@@ -152,16 +164,16 @@ public class ButtonTest : MonoBehaviour
     /// </summary>
     public void ToggleConnection()
     {
-        if (nodeJSConnector != null)
+        if (currentConnector != null)
         {
-            if (nodeJSConnector.IsConnected)
+            if (currentConnector.IsConnected)
             {
-                nodeJSConnector.Disconnect();
+                currentConnector.Disconnect();
                 ShowFeedback("Disconnected from Node.js");
             }
             else
             {
-                nodeJSConnector.Connect();
+                currentConnector.Connect();
                 ShowFeedback("Connecting to Node.js...", Color.yellow);
             }
         }
@@ -178,9 +190,9 @@ public class ButtonTest : MonoBehaviour
     /// </summary>
     public void SendCommand(string command)
     {
-        if (nodeJSConnector != null && nodeJSConnector.IsConnected)
+        if (currentConnector != null && currentConnector.IsConnected)
         {
-            nodeJSConnector.Send("command", command);
+            currentConnector.Send("command", command);
             ShowFeedback($"Sent command: {command}");
         }
         else
@@ -215,9 +227,9 @@ public class ButtonTest : MonoBehaviour
 
         if (statusText != null)
         {
-            statusText.text = nodeJSConnector != null && nodeJSConnector.IsConnected ?
+            statusText.text = currentConnector != null && currentConnector.IsConnected ?
                 "Connected" : "Disconnected";
-            statusText.color = nodeJSConnector != null && nodeJSConnector.IsConnected ?
+            statusText.color = currentConnector != null && currentConnector.IsConnected ?
                 Color.green : Color.white;
         }
     }

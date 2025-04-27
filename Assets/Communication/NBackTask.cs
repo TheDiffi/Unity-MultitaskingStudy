@@ -18,8 +18,18 @@ public class NBackTask : MonoBehaviour
     [SerializeField] private int nBackLevel = 1;
     [SerializeField] private int totalTrials = 30;
 
+    [Header("Communication")]
+    [Tooltip("Set either NodeJSConnector OR ADBConnector, not both")]
     [SerializeField]
-    private IConnector nodeJSConnector;
+    private NodeJSConnector nodeJSConnector;
+
+    [Tooltip("Set either NodeJSConnector OR ADBConnector, not both")]
+    [SerializeField]
+    private ADBConnector adbConnector;
+
+    // Automatically selects which connector to use (NodeJS has priority if both are set)
+    private IConnector currentConnector => (IConnector)adbConnector ?? nodeJSConnector;
+
     private Color[] colors = { Color.red, Color.green, Color.blue, Color.yellow, Color.magenta, Color.white };
     private int currentTrial = 0;
     private int[] colorSequence;
@@ -36,6 +46,13 @@ public class NBackTask : MonoBehaviour
 
     void Start()
     {
+        // Check if the connector is set and connected
+        if (currentConnector == null)
+        {
+            Debug.LogError("No connector set. Please assign a NodeJS or ADB connector.");
+            throw new InvalidOperationException("No connector set. Please assign a NodeJS or ADB connector.");
+        }
+
         // Register handlers using the NBack task-specific registration method
         nodeJSConnector.RegisterNBackHandler("start", _ => StartTask());
         nodeJSConnector.RegisterNBackHandler("pause", _ => PauseTask());

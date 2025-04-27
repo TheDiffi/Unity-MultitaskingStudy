@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System;
 
 /// <summary>
 /// InterruptTaskManager implements the Power Stabilization task as described in the implementation guide.
@@ -7,8 +8,19 @@ using System.Collections.Generic;
 /// </summary>
 public class InterruptTaskManager : MonoBehaviour
 {
+    [Header("Communication")]
+    [Tooltip("Set either NodeJSConnector OR ADBConnector, not both")]
+    [SerializeField]
+    private NodeJSConnector nodeJSConnector;
+
+    [Tooltip("Set either NodeJSConnector OR ADBConnector, not both")]
+    [SerializeField]
+    private ADBConnector adbConnector;
+
+    // Automatically selects which connector to use (NodeJS has priority if both are set)
+    private IConnector currentConnector => (IConnector)adbConnector ?? nodeJSConnector;
     [Header("References")]
-    [SerializeField] private IConnector nodeJSConnector;
+
     [SerializeField] private InterruptRenderer interruptRenderer; // Will be implemented by you later
 
     [Header("Configuration")]
@@ -28,14 +40,15 @@ public class InterruptTaskManager : MonoBehaviour
     private float sessionStartTime;
 
     // Debug mode timestamp for button presses
-    private System.DateTime debugSessionStartTime;
+    private DateTime debugSessionStartTime;
 
     private void Start()
     {
-        // Initialize references if needed
-        if (nodeJSConnector == null)
+        // Check if the connector is set and connected
+        if (currentConnector == null)
         {
-            Debug.LogError("IConnector component not found. Please assign it in the inspector.");
+            Debug.LogError("No connector set. Please assign a NodeJS or ADB connector.");
+            throw new InvalidOperationException("No connector set. Please assign a NodeJS or ADB connector.");
         }
 
         if (interruptRenderer == null)
@@ -47,25 +60,25 @@ public class InterruptTaskManager : MonoBehaviour
     //event receivers for start, interrupt, task-over, exit, get-data
     private void OnEnable()
     {
-        nodeJSConnector.RegisterPowerStabilizationHandler("configure", (data) => ConfigureTask(data));
-        nodeJSConnector.RegisterPowerStabilizationHandler("start", _ => StartTask());
-        nodeJSConnector.RegisterPowerStabilizationHandler("interrupt", _ => InterruptTask());
-        nodeJSConnector.RegisterPowerStabilizationHandler("exit", _ => TaskOver());
-        nodeJSConnector.RegisterPowerStabilizationHandler("get-data", _ => GetData());
-        nodeJSConnector.RegisterPowerStabilizationHandler("debug", _ => DebugMode());
-        nodeJSConnector.RegisterPowerStabilizationHandler("exit-debug", _ => ExitDebugMode());
+        currentConnector.RegisterPowerStabilizationHandler("configure", (data) => ConfigureTask(data));
+        currentConnector.RegisterPowerStabilizationHandler("start", _ => StartTask());
+        currentConnector.RegisterPowerStabilizationHandler("interrupt", _ => InterruptTask());
+        currentConnector.RegisterPowerStabilizationHandler("exit", _ => TaskOver());
+        currentConnector.RegisterPowerStabilizationHandler("get-data", _ => GetData());
+        currentConnector.RegisterPowerStabilizationHandler("debug", _ => DebugMode());
+        currentConnector.RegisterPowerStabilizationHandler("exit-debug", _ => ExitDebugMode());
     }
 
     private void OnDisable()
     {
         // Using the task-specific Off method
-        nodeJSConnector.Off(IConnector.TaskType.PowerStabilization, "configure");
-        nodeJSConnector.Off(IConnector.TaskType.PowerStabilization, "start");
-        nodeJSConnector.Off(IConnector.TaskType.PowerStabilization, "interrupt");
-        nodeJSConnector.Off(IConnector.TaskType.PowerStabilization, "exit");
-        nodeJSConnector.Off(IConnector.TaskType.PowerStabilization, "get-data");
-        nodeJSConnector.Off(IConnector.TaskType.PowerStabilization, "debug");
-        nodeJSConnector.Off(IConnector.TaskType.PowerStabilization, "exit-debug");
+        currentConnector.Off(IConnector.TaskType.PowerStabilization, "configure");
+        currentConnector.Off(IConnector.TaskType.PowerStabilization, "start");
+        currentConnector.Off(IConnector.TaskType.PowerStabilization, "interrupt");
+        currentConnector.Off(IConnector.TaskType.PowerStabilization, "exit");
+        currentConnector.Off(IConnector.TaskType.PowerStabilization, "get-data");
+        currentConnector.Off(IConnector.TaskType.PowerStabilization, "debug");
+        currentConnector.Off(IConnector.TaskType.PowerStabilization, "exit-debug");
     }
 
     private void ConfigureTask(object data)
@@ -83,7 +96,7 @@ public class InterruptTaskManager : MonoBehaviour
             }
             else
             {
-                nodeJSConnector.SendPowerStabilizationEvent("configure-error", "Expected JObject format for configuration");
+                currentConnector.SendPowerStabilizationEvent("configure-error", "Expected JObject format for configuration");
                 Debug.LogError("Failed to parse configuration data: " + (data != null ? data.ToString() : "null"));
                 return;
             }
@@ -110,15 +123,15 @@ public class InterruptTaskManager : MonoBehaviour
             }
 
             // Send success message
-            nodeJSConnector.SendPowerStabilizationEvent("configure-success", "Configuration applied successfully");
+            currentConnector.SendPowerStabilizationEvent("configure-success", "Configuration applied successfully");
             Debug.Log($"Configuration applied: studyId={studyId}, sessionNumber={sessionNumber}, traversalTime={traversalTime}, trialCount={trialCount}");
 
             // Update the state
             currentState = GameState.Idle;
         }
-        catch (System.Exception ex)
+        catch (Exception ex)
         {
-            nodeJSConnector.SendPowerStabilizationEvent("configure-error", "Error parsing configuration: " + ex.Message);
+            currentConnector.SendPowerStabilizationEvent("configure-error", "Error parsing configuration: " + ex.Message);
             Debug.LogException(ex);
         }
     }
@@ -140,7 +153,7 @@ public class InterruptTaskManager : MonoBehaviour
 
         // Start the interrupt task
         Debug.Log("Starting interrupt task...");
-        nodeJSConnector.SendPowerStabilizationEvent("task-started", "Interrupt task started");
+        currentConnector.SendPowerStabilizationEvent("task-started", "Interrupt task started");
     }
 
     private void InterruptTask()
@@ -157,7 +170,7 @@ public class InterruptTaskManager : MonoBehaviour
 
         // Simulate an interrupt
         Debug.Log("Interrupt triggered...");
-        nodeJSConnector.SendPowerStabilizationEvent("interrupt-triggered", "Interrupt triggered");
+        currentConnector.SendPowerStabilizationEvent("interrupt-triggered", "Interrupt triggered");
 
         // Start the first trial
         StartNextTrial();
@@ -174,20 +187,16 @@ public class InterruptTaskManager : MonoBehaviour
 
         currentState = GameState.InProgress;
 
-        // Randomize speed by ±20% as per guide
-        float speedVariation = 0.2f; // 20%
-        int adjustedTraversalTime = traversalTime + (int)(Random.Range(-speedVariation, speedVariation) * traversalTime);
-
         // Start new trial
-        Debug.Log($"Starting trial {currentTrial + 1}/{trialCount} with traversal time: {adjustedTraversalTime}ms");
-        interruptRenderer.StartTrial(adjustedTraversalTime);
+        Debug.Log($"Starting trial {currentTrial + 1}/{trialCount} with traversal time: {traversalTime}ms");
+        interruptRenderer.StartTrial(traversalTime);
     }
 
     private void CompleteInterrupt()
     {
         currentState = GameState.Complete;
         Debug.Log("Interrupt sequence completed");
-        nodeJSConnector.SendPowerStabilizationEvent("interrupt-complete", "Interrupt sequence completed");
+        currentConnector.SendPowerStabilizationEvent("interrupt-complete", "Interrupt sequence completed");
     }
 
     private void TaskOver()
@@ -200,7 +209,7 @@ public class InterruptTaskManager : MonoBehaviour
 
         Debug.Log("Task ending...");
         currentState = GameState.Idle;
-        nodeJSConnector.SendPowerStabilizationEvent("task-complete", "Task completed");
+        currentConnector.SendPowerStabilizationEvent("task-complete", "Task completed");
     }
 
     private void GetData()
@@ -215,7 +224,7 @@ public class InterruptTaskManager : MonoBehaviour
         // Send trial data
         foreach (var data in trialDataList)
         {
-            nodeJSConnector.SendPowerStabilizationEvent("trial-data", data.ToString());
+            currentConnector.SendPowerStabilizationEvent("trial-data", data.ToString());
         }
 
         // Send session summary
@@ -230,8 +239,8 @@ public class InterruptTaskManager : MonoBehaviour
             { "successfulTrials", successCount }
         };
 
-        nodeJSConnector.SendPowerStabilizationEvent("session-summary", sessionSummary);
-        nodeJSConnector.SendPowerStabilizationEvent("data-complete", "Data transfer complete");
+        currentConnector.SendPowerStabilizationEvent("session-summary", sessionSummary);
+        currentConnector.SendPowerStabilizationEvent("data-complete", "Data transfer complete");
     }
 
     private void DebugMode()
@@ -240,11 +249,11 @@ public class InterruptTaskManager : MonoBehaviour
         currentState = GameState.TestMode;
 
         // Initialize debug session start time for timestamp calculations
-        debugSessionStartTime = System.DateTime.Now;
+        debugSessionStartTime = DateTime.Now;
 
         // Use RunDebug instead of StartTrial for debug mode
         interruptRenderer.RunDebug();
-        nodeJSConnector.SendPowerStabilizationEvent("debug-active", "Debug mode active");
+        currentConnector.SendPowerStabilizationEvent("debug-active", "Debug mode active");
     }
 
     private void ExitDebugMode()
@@ -254,7 +263,7 @@ public class InterruptTaskManager : MonoBehaviour
 
         // Use StopDebug instead of StopTrial for exiting debug mode
         interruptRenderer.StopDebug();
-        nodeJSConnector.SendPowerStabilizationEvent("debug-exited", "Debug mode exited");
+        currentConnector.SendPowerStabilizationEvent("debug-exited", "Debug mode exited");
     }
 
     // Called by InterruptRenderer when a trial is complete
@@ -294,7 +303,7 @@ public class InterruptTaskManager : MonoBehaviour
         trialDataList.Add(trialData);
 
         // Send trial result to Node.js
-        nodeJSConnector.SendPowerStabilizationEvent("trial-complete", trialData.ToString());
+        currentConnector.SendPowerStabilizationEvent("trial-complete", trialData.ToString());
 
         // If in test mode, don't progress to next trial
         if (currentState == GameState.TestMode)
@@ -325,7 +334,7 @@ public class InterruptTaskManager : MonoBehaviour
         // In debug mode, log button press with timestamp
         if (currentState == GameState.TestMode)
         {
-            System.TimeSpan elapsed = System.DateTime.Now - debugSessionStartTime;
+            TimeSpan elapsed = DateTime.Now - debugSessionStartTime;
             Debug.Log($"DEBUG MODE: Button pressed at {elapsed.TotalSeconds:F3}s since debug start");
         }
 
