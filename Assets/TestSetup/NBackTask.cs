@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics; // Added for Stopwatch
 using UnityEngine;
+using Debug = UnityEngine.Debug; // Explicit reference to UnityEngine.Debug
 
 public class NBackTask : MonoBehaviour
 {
@@ -24,21 +26,28 @@ public class NBackTask : MonoBehaviour
 
     private Color[] colors = { Color.red, Color.green, Color.blue, Color.yellow, Color.magenta, Color.white };
     private int currentTrial = 0;
+    private int sessionNumber = -1;
+    private string studyId = "NOCONF";
     private int[] colorSequence;
     private bool awaitingResponse;
     private bool targetTrial;
     private float trialStartTime;
     private List<TrialData> trialDataList = new List<TrialData>();
+    private Dictionary<int, long> trialOnsetTimes = new Dictionary<int, long>(); // Store onset times by trial number
 
     private bool isPaused = false;
     private Coroutine trialCoroutine;
     private Coroutine debugCoroutine;
     private bool inDebugMode = false;
     private bool eventsSetup = false;
-
+    private Stopwatch sessionStopwatch;
 
     void Start()
     {
+        // Initialize session start time
+        sessionStopwatch = new Stopwatch();
+        sessionStopwatch.Start();
+
         // Check if the connector is set and connected
         if (currentConnector == null)
         {
@@ -204,6 +213,17 @@ public class NBackTask : MonoBehaviour
                 return;
             }
 
+            // Process parameters - we know numeric values are of type long
+            if (paramsDict.TryGetValue("studyId", out object studyIdObj) && studyIdObj is string studyIdStr)
+            {
+                studyId = studyIdStr;
+            }
+
+            if (paramsDict.TryGetValue("sessionNumber", out object sessionObj) && sessionObj is long sessionLong)
+            {
+                sessionNumber = (int)sessionLong;
+            }
+
             // Process numeric parameters - we know they are all of type long
             if (paramsDict.TryGetValue("stimDuration", out object stimDurationObj) && stimDurationObj is long stimDurationLong)
             {
@@ -292,11 +312,16 @@ public class NBackTask : MonoBehaviour
 
             targetTrial = currentTrial >= nBackLevel && colorSequence[currentTrial] == colorSequence[currentTrial - nBackLevel];
 
+            // Capture exact stimulus presentation time using the Stopwatch
+            long stimulusOnsetTime = sessionStopwatch.ElapsedMilliseconds;
+
             // Show the stimulus color
             stimulusRenderer.material.color = colors[colorSequence[currentTrial]];
             trialStartTime = Time.time;
             awaitingResponse = true;
 
+            // Store onset time for this trial to use in HandleResponse
+            trialOnsetTimes[currentTrial] = stimulusOnsetTime;
             // Wait for input instead of automatically advancing
             while (awaitingResponse)
             {
@@ -337,7 +362,15 @@ public class NBackTask : MonoBehaviour
 
         if (!awaitingResponse) return;
 
-        float reactionTime = Time.time - trialStartTime;
+        // Capture response time using the Stopwatch for precision
+        long responseTimeMs = sessionStopwatch.ElapsedMilliseconds;
+
+        // Get the stored onset time for the current trial
+        long stimulusOnsetTimeMs = trialOnsetTimes[currentTrial];
+
+        // Calculate reaction time in milliseconds using precise Stopwatch values
+        int reactionTimeMs = (int)(responseTimeMs - stimulusOnsetTimeMs);
+
         var result = targetTrial == isConfirm
             ? targetTrial ? "Correct response" : "Correct rejection"
             : targetTrial ? "Missed target" : "False alarm";
@@ -349,7 +382,7 @@ public class NBackTask : MonoBehaviour
         currentConnector.SendNBackEvent("trial-complete", result);
 
         // Finally, record the trial data
-        RecordTrial(isConfirm, reactionTime, result);
+        RecordTrial(isConfirm, reactionTimeMs, responseTimeMs, result);
 
         // Mark that we've received the response
         awaitingResponse = false;
@@ -362,18 +395,40 @@ public class NBackTask : MonoBehaviour
         stimulusRenderer.material.color = Color.black;
     }
 
-    void RecordTrial(bool response, float reactionTime, string result)
+    void RecordTrial(bool response, int reactionTimeMs, long responseTimeMs, string result)
     {
+        // Get color name from index for the stimulus_color field
+        string colorName = GetColorNameFromIndex(colorSequence[currentTrial]);
+
+        // Determine if the response was correct
+        bool isCorrect = targetTrial == response;
+
+        // Get the precise stimulus onset time from our stored dictionary
+        int stimulusOnsetTimeMs = (int)trialOnsetTimes[currentTrial];
+
+        // Use the precise response time from Stopwatch
+        int responseTimeFinalMs = (int)responseTimeMs;
+
+        // Calculate stimulus end time based on precise onset time
+        int stimulusEndTimeMs = stimulusOnsetTimeMs + Mathf.RoundToInt(stimulusDuration * 1000);
+
         trialDataList.Add(new TrialData
         {
-            TrialNumber = currentTrial + 1,
-            ColorIndex = colorSequence[currentTrial],
-            IsTarget = targetTrial,
-            ResponseMade = response,
-            ReactionTime = reactionTime,
-            Result = result,
-            Timestamp = Time.time
+            study_id = studyId,
+            session_number = sessionNumber,
+            // Use currentTrial + 1 to match the stimulus number with the trial number (1-based index)
+            stimulus_number = currentTrial + 1,
+            stimulus_color = colorName,
+            is_target = targetTrial,
+            response_made = response,
+            is_correct = isCorrect,
+            stimulus_onset_time = stimulusOnsetTimeMs,
+            response_time = responseTimeFinalMs,
+            reaction_time = reactionTimeMs,
+            stimulus_end_time = stimulusEndTimeMs
         });
     }
+
+
 }
 

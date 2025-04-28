@@ -291,7 +291,6 @@ public class InterruptTaskManager : MonoBehaviour
             currentTrial++;
         }
 
-        // Check if cursor was in the green zone (zone 2)
         bool inGreenZone = zoneIndex == 2;
         if (inGreenZone)
         {
@@ -300,31 +299,27 @@ public class InterruptTaskManager : MonoBehaviour
 
         // Record trial data with high-precision timestamp
         float timestamp = sessionStopwatch.ElapsedMilliseconds / 1000f;
+        int speedMs = Mathf.RoundToInt(responseTime * 1000);
 
         var trialData = new TrialData
         {
-            StudyId = studyId,
-            SessionNumber = sessionNumber,
-            TrialNumber = currentTrial,
-            Zone = zoneIndex,
-            Accuracy = accuracy,
-            ResponseTime = responseTime,
-            Success = inGreenZone,
-            Timestamp = timestamp
+            study_id = studyId,
+            session_number = sessionNumber,
+            accuracy = accuracy,        // Integer accuracy value from InterruptRenderer
+            speed = speedMs,            // Convert response time to milliseconds for speed
+            zone_correct = inGreenZone, // Whether the user hit the correct zone
+            timestamp = timestamp
         };
 
         trialDataList.Add(trialData);
 
-        // Send trial result to Node.js
         currentController.SendPowerStabilizationEvent("trial-complete", trialData.ToString());
 
-        // If in test mode, don't progress to next trial
         if (currentState == GameState.TestMode)
         {
             return;
         }
 
-        // Start next trial or complete interrupt sequence
         if (currentTrial < trialCount)
         {
             StartNextTrial();
@@ -364,18 +359,16 @@ public class InterruptTaskManager : MonoBehaviour
     // Data structure for trial results
     private class TrialData
     {
-        public string StudyId { get; set; }
-        public int SessionNumber { get; set; }
-        public int TrialNumber { get; set; }
-        public int Zone { get; set; }
-        public int Accuracy { get; set; }
-        public float ResponseTime { get; set; }
-        public bool Success { get; set; }
-        public float Timestamp { get; set; }
+        public string study_id { get; set; }
+        public int session_number { get; set; }
+        public int accuracy { get; set; }
+        public int speed { get; set; }
+        public bool zone_correct { get; set; }
+        public float timestamp { get; set; }
 
         public override string ToString()
         {
-            return $"{StudyId},{SessionNumber},{Timestamp:F3},power-stabilization,trial-complete,{Accuracy},{ResponseTime:F2},{Success}";
+            return JsonUtility.ToJson(this);
         }
     }
 }
