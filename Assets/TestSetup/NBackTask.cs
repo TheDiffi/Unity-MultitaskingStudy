@@ -34,6 +34,7 @@ public class NBackTask : MonoBehaviour
     private Coroutine trialCoroutine;
     private Coroutine debugCoroutine;
     private bool inDebugMode = false;
+    private bool eventsSetup = false;
 
 
     void Start()
@@ -45,20 +46,26 @@ public class NBackTask : MonoBehaviour
             throw new InvalidOperationException("No connector set. Please assign a NodeJS or ADB connector.");
         }
 
-        // Register handlers using the NBack task-specific registration method
-        currentConnector.RegisterNBackHandler("start", _ => StartTask());
-        currentConnector.RegisterNBackHandler("pause", _ => PauseTask());
-        currentConnector.RegisterNBackHandler("resume", _ => ResumeTask());
-        currentConnector.RegisterNBackHandler("stop", _ => ExitTask());
-        currentConnector.RegisterNBackHandler("debug", _ => DebugMode());
-        currentConnector.RegisterNBackHandler("exit-debug", _ => ExitDebug());
-        currentConnector.RegisterNBackHandler("exit", _ => ExitTask());
-        currentConnector.RegisterNBackHandler("get-data", _ => GetData());
-        currentConnector.RegisterNBackHandler("configure", (data) => ConfigureTask(data));
+        if (!eventsSetup)
+        {
+            // Register handlers using the NBack task-specific registration method
+            currentConnector.RegisterNBackHandler("start", _ => StartTask());
+            currentConnector.RegisterNBackHandler("pause", _ => PauseTask());
+            currentConnector.RegisterNBackHandler("resume", _ => ResumeTask());
+            currentConnector.RegisterNBackHandler("stop", _ => ExitTask());
+            currentConnector.RegisterNBackHandler("debug", _ => DebugMode());
+            currentConnector.RegisterNBackHandler("exit-debug", _ => ExitDebug());
+            currentConnector.RegisterNBackHandler("exit", _ => ExitTask());
+            currentConnector.RegisterNBackHandler("get-data", _ => GetData());
+            currentConnector.RegisterNBackHandler("configure", (data) => ConfigureTask(data));
+            eventsSetup = true;
+        }
+
     }
 
     void StartTask()
     {
+        Debug.Log("Starting NBack task");
         if (trialCoroutine != null)
             StopCoroutine(trialCoroutine);
 
@@ -79,11 +86,15 @@ public class NBackTask : MonoBehaviour
 
     void PauseTask()
     {
+        Debug.Log("Pausing NBack task");
         isPaused = !isPaused;
+        Debug.Log($"Task paused: {isPaused}");
+        currentConnector.SendNBackEvent("task-paused", isPaused ? "Task paused" : "Task resumed");
     }
 
     void ResumeTask()
     {
+        Debug.Log("Resuming NBack task");
         // Resume is just unpausing the task
         isPaused = false;
         currentConnector.SendNBackEvent("task-resumed", "Task resumed");
@@ -157,6 +168,7 @@ public class NBackTask : MonoBehaviour
 
     void ExitTask()
     {
+        Debug.Log("Exiting NBack task");
         if (trialCoroutine != null)
             StopCoroutine(trialCoroutine);
         stimulusRenderer.material.color = Color.black;
@@ -165,6 +177,7 @@ public class NBackTask : MonoBehaviour
 
     void GetData()
     {
+        Debug.Log("Sending trial data to Node.js controller");
         foreach (var data in trialDataList)
             currentConnector.SendNBackEvent("trial-data", data.ToString());
 
@@ -174,6 +187,7 @@ public class NBackTask : MonoBehaviour
 
     void ConfigureTask(object data)
     {
+        Debug.Log("Configuring NBack task with data: " + (data != null ? data.ToString() : "null"));
         try
         {
             Dictionary<string, object> paramsDict = null;

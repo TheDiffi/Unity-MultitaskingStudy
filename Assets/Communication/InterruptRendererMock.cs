@@ -7,7 +7,7 @@ using System.Collections;
 /// visual elements and cursor movement according to the implementation guide.
 /// This is a mock version that can be replaced with a full implementation later.
 /// </summary>
-public class InterruptRenderer : MonoBehaviour
+public class InterruptRendererMock : MonoBehaviour
 {
     [Header("UI References")]
     [SerializeField] private Slider zoneSlider; // Optional UI slider to visualize the zones
@@ -106,14 +106,10 @@ public class InterruptRenderer : MonoBehaviour
             Debug.LogWarning("[InterruptRenderer] Button pressed but cursor is not moving");
             return;
         }
-
-        // Calculate which zone the cursor is in
         int zoneIndex = CalculateZone(cursorPosition);
 
-        // Calculate accuracy (0.0 = perfect center, 1.0 = edge of display)
-        float accuracy = CalculateAccuracy(cursorPosition);
+        int accuracy = CalculateAccuracy(cursorPosition);
 
-        // Calculate response time
         float responseTime = Time.time - trialStartTime;
 
         Debug.Log($"[InterruptRenderer] Button pressed: Zone {zoneIndex}, Accuracy {accuracy:F2}, Time {responseTime:F2}s");
@@ -168,18 +164,13 @@ public class InterruptRenderer : MonoBehaviour
     }
 
     /// <summary>
-    /// Calculate accuracy based on distance from perfect center
+    /// Calculate accuracy based on distance from perfect center, non normalized, (int) 0 - 100 range
     /// </summary>
-    private float CalculateAccuracy(float position)
+    private int CalculateAccuracy(float position)
     {
-        // Calculate center position (0.5 for a normalized 0-1 range)
-        float centerPosition = 0.5f;
-
-        // Calculate normalized distance from center (0 = perfect, 0.5 = edge)
-        float distanceFromCenter = Mathf.Abs(position - centerPosition);
-
-        // Convert to accuracy (1.0 = perfect, 0.0 = edge)
-        return 1.0f - (distanceFromCenter * 2.0f);
+        float centerPosition = 0.5f; // Center of the green zone
+        float distanceFromCenter = Mathf.Abs(position - centerPosition) * 100f; // Scale to 0-100 range
+        return (int)(distanceFromCenter); // Return as integer
     }
 
     /// <summary>

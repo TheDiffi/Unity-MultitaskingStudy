@@ -30,6 +30,7 @@ public class MasterConnector : MonoBehaviour
 
 
     [Header("Communication")]
+    [SerializeField] private bool useWebSocket = true;
     [Tooltip("Set either NodeJSConnector OR ADBConnector, not both")]
     [SerializeField]
     private NodeJSConnector nodeJSConnector;
@@ -37,7 +38,7 @@ public class MasterConnector : MonoBehaviour
     [SerializeField]
     private ADBConnector adbConnector;
     // Automatically selects which connector to use (NodeJS has priority if both are set)
-    private IConnector currentConnector => (IConnector)adbConnector ?? nodeJSConnector;
+    private IConnector currentConnector => useWebSocket ? nodeJSConnector : adbConnector;
     public bool IsConnected => currentConnector?.IsConnected ?? false;
     [SerializeField] private bool sendDebugMessages = true;
 
