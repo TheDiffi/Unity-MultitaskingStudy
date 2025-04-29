@@ -87,7 +87,6 @@ public class MasterConnector : MonoBehaviour
             // Start sending test messages automatically every 7 seconds
             InvokeRepeating("SendTestMessage", 0f, 7.0f);
         }
-
     }
 
     void SendTestMessage()
