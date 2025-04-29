@@ -1493,7 +1493,7 @@ GameObject:
   m_Component:
   - component: {fileID: 204901882}
   m_Layer: 0
-  m_Name: CubeParent
+  m_Name: NbackCubeParent
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1507,14 +1507,14 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 204901881}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.1771, y: 0, z: 0}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -0.1771, y: 0, z: -0.014219999}
   m_LocalScale: {x: 0.06, y: 0.06, z: 0.06}
   m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 866202154}
   - {fileID: 721090301}
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1955677650}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &212861625
 GameObject:
@@ -2091,7 +2091,7 @@ GameObject:
   m_Component:
   - component: {fileID: 269828191}
   m_Layer: 0
-  m_Name: cameraApi
+  m_Name: PassthroughCameraApi
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3000,6 +3000,68 @@ Transform:
   - {fileID: 18377573}
   m_Father: {fileID: 507324176}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &429014374
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1955677650}
+    m_Modifications:
+    - target: {fileID: 2504002629058932325, guid: 906ea88a5744ad04d90d169b9fb127b1, type: 3}
+      propertyPath: m_Name
+      value: LEDStrip
+      objectReference: {fileID: 0}
+    - target: {fileID: 3178156683832339829, guid: 906ea88a5744ad04d90d169b9fb127b1, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3178156683832339829, guid: 906ea88a5744ad04d90d169b9fb127b1, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.0471
+      objectReference: {fileID: 0}
+    - target: {fileID: 3178156683832339829, guid: 906ea88a5744ad04d90d169b9fb127b1, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.0497
+      objectReference: {fileID: 0}
+    - target: {fileID: 3178156683832339829, guid: 906ea88a5744ad04d90d169b9fb127b1, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 3178156683832339829, guid: 906ea88a5744ad04d90d169b9fb127b1, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 3178156683832339829, guid: 906ea88a5744ad04d90d169b9fb127b1, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3178156683832339829, guid: 906ea88a5744ad04d90d169b9fb127b1, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3178156683832339829, guid: 906ea88a5744ad04d90d169b9fb127b1, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: -90
+      objectReference: {fileID: 0}
+    - target: {fileID: 3178156683832339829, guid: 906ea88a5744ad04d90d169b9fb127b1, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3178156683832339829, guid: 906ea88a5744ad04d90d169b9fb127b1, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 906ea88a5744ad04d90d169b9fb127b1, type: 3}
+--- !u!4 &429014375 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3178156683832339829, guid: 906ea88a5744ad04d90d169b9fb127b1, type: 3}
+  m_PrefabInstance: {fileID: 429014374}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &440432460
 GameObject:
   m_ObjectHideFlags: 0
@@ -8169,7 +8231,7 @@ MonoBehaviour:
   _editor: {fileID: 1267770606}
   _width: 0.1
   _height: 0.1
-  _color: {r: 1, g: 1, b: 1, a: 1}
+  _color: {r: 0.6657003, g: 1, b: 0.5801887, a: 1}
   _borderColor: {r: 0, g: 0, b: 0, a: 1}
   _radiusTopLeft: 0
   _radiusTopRight: 0
@@ -9280,7 +9342,7 @@ GameObject:
   - component: {fileID: 1467219511}
   - component: {fileID: 1467219510}
   m_Layer: 0
-  m_Name: '[BuildingBlock] Poke Button 1'
+  m_Name: '[BuildingBlock] Poke Button Yes'
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -9458,14 +9520,14 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1467219506}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -0.0451, y: 0, z: -0.014219999}
   m_LocalScale: {x: 0.6, y: 0.66, z: 0.66}
   m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 1670874568}
   - {fileID: 64639429}
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1955677650}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1467219510
 MonoBehaviour:
@@ -9474,7 +9536,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1467219506}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1464721f2283eb14e94a33e812b47be4, type: 3}
   m_Name: 
@@ -10641,7 +10703,7 @@ GameObject:
   - component: {fileID: 1794331405}
   - component: {fileID: 1794331404}
   m_Layer: 0
-  m_Name: '[BuildingBlock] Poke Button 2'
+  m_Name: '[BuildingBlock] Poke Button No'
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -10654,7 +10716,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1794331403}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1464721f2283eb14e94a33e812b47be4, type: 3}
   m_Name: 
@@ -10880,14 +10942,14 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1794331403}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0.0752, y: 0, z: -0.014219999}
   m_LocalScale: {x: 0.6, y: 0.66, z: 0.66}
   m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 255086945}
   - {fileID: 32422987}
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1955677650}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1807493187
 GameObject:
@@ -11631,7 +11693,7 @@ MonoBehaviour:
   _editor: {fileID: 1911935608}
   _width: 0.1
   _height: 0.1
-  _color: {r: 1, g: 1, b: 1, a: 1}
+  _color: {r: 1, g: 0.5990566, b: 0.5990566, a: 1}
   _borderColor: {r: 0, g: 0, b: 0, a: 1}
   _radiusTopLeft: 0
   _radiusTopRight: 0
@@ -11923,9 +11985,11 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1955677650}
-  - component: {fileID: 1955677652}
   - component: {fileID: 1955677648}
   - component: {fileID: 1955677651}
+  - component: {fileID: 1955677654}
+  - component: {fileID: 1955677653}
+  - component: {fileID: 1955677652}
   m_Layer: 0
   m_Name: TaskManager
   m_TagString: Untagged
@@ -11946,13 +12010,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   stimulusRenderer: {fileID: 721090299}
-  stimulusDuration: 2
-  interStimulusInterval: 2
-  feedbackDuration: 0.1
-  nBackLevel: 1
-  totalTrials: 30
-  nodeJSConnector: {fileID: 0}
-  adbConnector: {fileID: 1955677652}
+  currentConnector: {fileID: 1955677654}
 --- !u!4 &1955677650
 Transform:
   m_ObjectHideFlags: 0
@@ -11965,7 +12023,11 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0.014219999}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 429014375}
+  - {fileID: 204901882}
+  - {fileID: 1467219509}
+  - {fileID: 1794331408}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1955677651
@@ -11981,8 +12043,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   statusText: {fileID: 0}
-  nodeJSConnector: {fileID: 0}
-  adbConnector: {fileID: 1955677652}
+  communicator: {fileID: 1955677654}
   feedbackDuration: 1.5
 --- !u!114 &1955677652
 MonoBehaviour:
@@ -11996,13 +12057,46 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9c21b22d724adb64ea28dd800576a4a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  addTimestampsToLog: 1
-  debugText: {fileID: 0}
-  maxLogLines: 15
   connectOnStart: 1
   reconnectOnDisconnect: 1
   reconnectDelay: 3
-  messagePollInterval: 0.1
+  pollingInterval: 0.1
+--- !u!114 &1955677653
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1955677647}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 621c489e4e8e0b84e82936f0d5c93d86, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  serverAddress: localhost
+  serverPort: 8080
+  connectOnStart: 1
+  reconnectOnDisconnect: 1
+  reconnectDelay: 3
+--- !u!114 &1955677654
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1955677647}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 57bed0a6603b21d4cb7609ca2831e922, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  addTimestampsToLog: 1
+  debugText: {fileID: 0}
+  maxLogLines: 15
+  useWebSocket: 1
+  nodeJSConnector: {fileID: 1955677653}
+  adbConnector: {fileID: 1955677652}
+  sendDebugMessages: 0
 --- !u!1 &1978119434
 GameObject:
   m_ObjectHideFlags: 0
@@ -12877,8 +12971,5 @@ SceneRoots:
   - {fileID: 292105325}
   - {fileID: 1004555202}
   - {fileID: 606525940}
-  - {fileID: 204901882}
-  - {fileID: 1467219509}
-  - {fileID: 1794331408}
   - {fileID: 1955677650}
   - {fileID: 269828191}

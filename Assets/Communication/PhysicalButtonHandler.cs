@@ -83,58 +83,38 @@ public class PhysicalButtonHandler : MonoBehaviour
             }
         }
 
-        // Check if this is for our task type
-        if (buttonData.TryGetValue("task", out object taskObj) && taskObj is string taskString)
+        if (buttonData != null && buttonData.TryGetValue("buttonType", out object buttonTypeObj) && buttonTypeObj is string buttonType)
         {
-            // The data field contains buttonType
-            if (buttonData.TryGetValue("data", out object dataObj))
+            if (debugMode)
             {
-                var innerData = dataObj as Dictionary<string, object>;
-                if (innerData == null)
-                {
-                    // Handle JObject case
-                    if (dataObj is Newtonsoft.Json.Linq.JObject jInnerData)
-                    {
-                        innerData = jInnerData.ToObject<Dictionary<string, object>>();
-                    }
-                }
-
-                if (innerData != null && innerData.TryGetValue("buttonType", out object buttonTypeObj) && buttonTypeObj is string buttonType)
-                {
-                    if (debugMode)
-                    {
-                        Debug.Log($"PhysicalButtonHandler: Received {buttonType} button press for {taskString}");
-                    }
-
-                    // Convert to lowercase for case-insensitive comparison
-                    string buttonTypeLower = buttonType.ToLower();
-
-                    // Use the constants for comparison instead of hardcoded strings
-                    switch (buttonTypeLower)
-                    {
-                        case ButtonTypes.CORRECT:
-                            onCorrectButtonPressed?.Invoke();
-                            break;
-                        case ButtonTypes.WRONG:
-                            onWrongButtonPressed?.Invoke();
-                            break;
-                        case ButtonTypes.INTERRUPT:
-                            onInterruptButtonPressed?.Invoke();
-                            break;
-                        default:
-                            Debug.LogWarning($"PhysicalButtonHandler: Unknown button type: {buttonType}");
-                            break;
-                    }
-                }
-                else
-                {
-                    Debug.LogWarning("PhysicalButtonHandler: Missing or invalid buttonType in data");
-                }
+                Debug.Log($"PhysicalButtonHandler: Received '{buttonType}' type button press");
             }
-            else
+
+            // Convert to lowercase for case-insensitive comparison
+            string buttonTypeLower = buttonType.ToLower();
+
+            // Use the constants for comparison instead of hardcoded strings
+            TestSendback();
+            switch (buttonTypeLower)
             {
-                Debug.LogWarning("PhysicalButtonHandler: Missing data field in physical-button-press event");
+                case ButtonTypes.CORRECT:
+                    onCorrectButtonPressed?.Invoke();
+                    break;
+                case ButtonTypes.WRONG:
+                    onWrongButtonPressed?.Invoke();
+                    break;
+                case ButtonTypes.INTERRUPT:
+                    onInterruptButtonPressed?.Invoke();
+                    break;
+                default:
+                    Debug.LogWarning($"PhysicalButtonHandler: Unknown button type: {buttonType}");
+                    break;
             }
         }
+    }
+
+    private void TestSendback()
+    {
+        connector.Send("button-press-received", "Hello from Unity!");
     }
 }

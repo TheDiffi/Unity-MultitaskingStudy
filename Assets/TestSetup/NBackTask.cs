@@ -1,24 +1,20 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics; // Added for Stopwatch
 using UnityEngine;
-using Debug = UnityEngine.Debug; // Explicit reference to UnityEngine.Debug
+using Debug = UnityEngine.Debug;
 
 public class NBackTask : MonoBehaviour
 {
     [SerializeField]
     private Renderer stimulusRenderer;
 
-    [Header("Timings")]
-    [SerializeField] private float stimulusDuration = 2f;
-    [SerializeField] private float interStimulusInterval = 2f;
-    [SerializeField] private float feedbackDuration = 0.1f;
+    private float stimulusDuration = 2f;
+    private float interStimulusInterval = 2f;
+    private float feedbackDuration = 0.1f;
 
-
-    [Header("Task Settings")]
-    [SerializeField] private int nBackLevel = 1;
-    [SerializeField] private int totalTrials = 30;
+    private int nBackLevel = 1;
+    private int totalTrials = 30;
 
     [Header("Communication")]
     [SerializeField]
@@ -100,7 +96,6 @@ public class NBackTask : MonoBehaviour
     void ResumeTask()
     {
         Debug.Log("Resuming NBack task");
-        // Resume is just unpausing the task
         isPaused = false;
         currentConnector.SendNBackEvent("task-resumed", "Task resumed");
     }
@@ -156,7 +151,7 @@ public class NBackTask : MonoBehaviour
         }
     }
 
-    // Helper function to get color name from index - for logging purposes
+    // Helper function to get color name from index - for logging p urposes
     private string GetColorNameFromIndex(int colorIndex)
     {
         return colorIndex switch
@@ -374,7 +369,7 @@ public class NBackTask : MonoBehaviour
 
     IEnumerator FeedbackFlash()
     {
-        stimulusRenderer.material.color = colors[5];
+        stimulusRenderer.material.color = Color.white;
         yield return new WaitForSeconds(feedbackDuration);
         stimulusRenderer.material.color = Color.black;
     }
