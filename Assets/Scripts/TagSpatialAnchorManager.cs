@@ -1,12 +1,12 @@
+/* using System;
 using System.Collections;
 using System.Collections.Generic;
+using AprilTag;
 using UnityEngine;
-using UnityEngine.XR.ARFoundation;
-using Unity.XR.CoreUtils;
 
 /// <summary>
 /// Manages the creation and calibration of spatial anchors based on AprilTag positions.
-/// Uses OVRSpatialAnchor for Meta Quest devices according to best practices.
+/// Uses OVRSpatialAnchor for Meta Quest devices following best practices.
 /// </summary>
 public class TagSpatialAnchorManager : MonoBehaviour
 {
@@ -18,11 +18,11 @@ public class TagSpatialAnchorManager : MonoBehaviour
     [Header("Calibration Settings")]
     [SerializeField] private int samplesForCalibration = 10;
     [SerializeField] private float sampleDelaySeconds = 0.05f;
+    [SerializeField] private float localizationTimeoutSeconds = 10.0f;
 
-    private bool isCalibrating = false;
     private Dictionary<int, OVRSpatialAnchor> tagAnchorMap = new Dictionary<int, OVRSpatialAnchor>();
-    private HashSet<System.Guid> persistedAnchorUuids = new HashSet<System.Guid>();
-    private System.Action<bool, OVRSpatialAnchor.UnboundAnchor> onLocalizedDelegate;
+    private HashSet<Guid> persistedAnchorUuids = new HashSet<Guid>();
+    private bool isCalibrating = false;
 
     /// <summary>
     /// Stores the mapping between an AprilTag ID and its GameObject with a spatial anchor
@@ -36,7 +36,6 @@ public class TagSpatialAnchorManager : MonoBehaviour
 
     private void Awake()
     {
-        onLocalizedDelegate = OnAnchorLocalized;
         LoadPersistedAnchorUuids();
     }
 
@@ -58,7 +57,6 @@ public class TagSpatialAnchorManager : MonoBehaviour
         {
             if (pair.anchorObject != null)
             {
-                // Check if there's already an anchor component
                 OVRSpatialAnchor anchor = pair.anchorObject.GetComponent<OVRSpatialAnchor>();
                 if (anchor != null)
                 {
@@ -67,8 +65,15 @@ public class TagSpatialAnchorManager : MonoBehaviour
             }
         }
 
-        // Auto-calibrate on startup after a short delay
-        Invoke("CalibrateAllAnchors", 1.0f);
+        // Auto-load existing anchors or calibrate if none exist
+        if (persistedAnchorUuids.Count > 0)
+        {
+            LoadAllSavedAnchors();
+        }
+        else
+        {
+            Invoke("CalibrateAllAnchors", 1.0f);
+        }
     }
 
     /// <summary>
@@ -84,7 +89,7 @@ public class TagSpatialAnchorManager : MonoBehaviour
             string[] uuidStrings = savedUuids.Split(',');
             foreach (string uuidStr in uuidStrings)
             {
-                if (System.Guid.TryParse(uuidStr, out System.Guid uuid))
+                if (Guid.TryParse(uuidStr, out Guid uuid))
                 {
                     persistedAnchorUuids.Add(uuid);
                 }
@@ -116,7 +121,7 @@ public class TagSpatialAnchorManager : MonoBehaviour
             return;
         }
 
-        _ = StartCoroutine(CalibrateAllAnchorsCoroutine());
+        StartCoroutine(CalibrateAllAnchorsCoroutine());
     }
 
     /// <summary>
@@ -147,7 +152,7 @@ public class TagSpatialAnchorManager : MonoBehaviour
             return;
         }
 
-        _ = StartCoroutine(CalibrateAnchorCoroutine(tagId, anchorObject));
+        StartCoroutine(CalibrateAnchorCoroutine(tagId, anchorObject));
     }
 
     private IEnumerator CalibrateAllAnchorsCoroutine()
@@ -173,23 +178,30 @@ public class TagSpatialAnchorManager : MonoBehaviour
     {
         Debug.Log($"Collecting {samplesForCalibration} samples for tag ID {tagId}...");
 
+        // Ensure tags are being detected
+        aprilTagManager.DetectTags(false);
+
         List<Vector3> positionSamples = new List<Vector3>();
         List<Quaternion> rotationSamples = new List<Quaternion>();
 
         // Collect samples
         int sampleCount = 0;
-        while (sampleCount < samplesForCalibration)
+        float timeout = 5.0f; // 5 seconds timeout
+        float elapsedTime = 0f;
+
+        while (sampleCount < samplesForCalibration && elapsedTime < timeout)
         {
-            if (aprilTagManager.TryGetTagTransform(tagId, out Vector3 position, out Quaternion rotation))
+            if (aprilTagManager.TryGetLastTagTransform(tagId, out TagPose tag))
             {
-                positionSamples.Add(position);
-                rotationSamples.Add(rotation);
+                positionSamples.Add(tag.Position);
+                rotationSamples.Add(tag.Rotation);
                 sampleCount++;
                 Debug.Log($"Collected sample {sampleCount}/{samplesForCalibration} for tag ID {tagId}");
+                elapsedTime = 0; // Reset timeout when we get a valid sample
             }
             else
             {
-                Debug.LogWarning($"Tag ID {tagId} not visible during calibration attempt");
+                elapsedTime += sampleDelaySeconds;
             }
 
             yield return new WaitForSeconds(sampleDelaySeconds);
@@ -205,34 +217,41 @@ public class TagSpatialAnchorManager : MonoBehaviour
             }
             averagePosition /= positionSamples.Count;
 
-            // For rotation, we use the last sample as it's difficult to average rotations properly
-            Quaternion averageRotation = rotationSamples[^1];
+            // For rotation, we use the last sample as averaging quaternions is non-trivial
+            Quaternion averageRotation = rotationSamples[rotationSamples.Count - 1];
 
             // Create or update the spatial anchor
-            yield return CreateOrUpdateSpatialAnchorCoroutine(tagId, anchorObject, averagePosition, averageRotation);
+            yield return CreateOrUpdateSpatialAnchorAsync(tagId, anchorObject, averagePosition, averageRotation);
         }
         else
         {
-            Debug.LogError($"Failed to collect any samples for tag ID {tagId}");
+            Debug.LogWarning($"Failed to collect any samples for tag ID {tagId}. Please ensure the tag is visible.");
         }
     }
 
-    private IEnumerator CreateOrUpdateSpatialAnchorCoroutine(int tagId, GameObject anchorObject, Vector3 position, Quaternion rotation)
+    private IEnumerator CreateOrUpdateSpatialAnchorAsync(int tagId, GameObject anchorObject, Vector3 position, Quaternion rotation)
     {
-        // If there's an existing anchor component, remove it
+        // If there's an existing anchor component, we need to erase it first
         OVRSpatialAnchor existingAnchor = anchorObject.GetComponent<OVRSpatialAnchor>();
         if (existingAnchor != null)
         {
-            // Remove the UUID from our persisted list if it exists
+            // Remove from persisted UUIDs if present
             if (persistedAnchorUuids.Contains(existingAnchor.Uuid))
             {
-                persistedAnchorUuids.Remove(existingAnchor.Uuid);
+                _ = persistedAnchorUuids.Remove(existingAnchor.Uuid);
             }
 
-            // Remove from map
+            // Erase from persistent storage
+            if (existingAnchor.Localized)
+            {
+                var eraseTask = existingAnchor.EraseAnchorAsync();
+                yield return new WaitUntil(() => eraseTask.IsCompleted);
+            }
+
+            // Remove from our dictionary
             if (tagAnchorMap.ContainsKey(tagId))
             {
-                tagAnchorMap.Remove(tagId);
+                _ = tagAnchorMap.Remove(tagId);
             }
 
             Destroy(existingAnchor);
@@ -242,50 +261,46 @@ public class TagSpatialAnchorManager : MonoBehaviour
         anchorObject.transform.position = position;
         anchorObject.transform.rotation = rotation;
 
-        // Create a new spatial anchor using OVRSpatialAnchor
+        // Create a new spatial anchor
         OVRSpatialAnchor newAnchor = anchorObject.AddComponent<OVRSpatialAnchor>();
 
-        // Wait for anchor to be created
-        yield return new WaitUntil(() => newAnchor.Created);
+        // Wait for anchor to be created and localized
+        var localizeTask = newAnchor.WhenLocalizedAsync();
+        yield return new WaitUntil(() => localizeTask.IsCompleted || Time.time > localizationTimeoutSeconds);
 
-        if (newAnchor.Created)
+        if (localizeTask.IsCompleted && localizeTask.Result)
         {
             tagAnchorMap[tagId] = newAnchor;
 
-            // Save the anchor asynchronously
-            SaveAnchorAsync(newAnchor);
+            // Save the anchor
+            var saveTask = newAnchor.SaveAnchorAsync();
+            yield return new WaitUntil(() => saveTask.IsCompleted);
 
-            Debug.Log($"Successfully created spatial anchor for tag ID {tagId} with UUID {newAnchor.Uuid} at position {position}");
+            var saveResult = saveTask.Result;
+            if (saveResult.Success)
+            {
+                persistedAnchorUuids.Add(newAnchor.Uuid);
+                SavePersistedAnchorUuids();
+                Debug.Log($"Successfully created and saved spatial anchor for tag ID {tagId} with UUID {newAnchor.Uuid}");
+            }
+            else
+            {
+                Debug.LogError($"Failed to save anchor for tag ID {tagId} with error {saveResult.Status}");
+            }
         }
         else
         {
-            Debug.LogError($"Failed to create spatial anchor for tag ID {tagId}");
+            Debug.LogError($"Failed to create or localize spatial anchor for tag ID {tagId}");
+            // Clean up the failed anchor
+            if (newAnchor != null)
+            {
+                Destroy(newAnchor);
+            }
         }
     }
 
     /// <summary>
-    /// Saves an anchor asynchronously following best practices
-    /// </summary>
-    private async void SaveAnchorAsync(OVRSpatialAnchor anchor)
-    {
-        var result = await anchor.SaveAnchorAsync();
-        if (result.Success)
-        {
-            persistedAnchorUuids.Add(anchor.Uuid);
-            SavePersistedAnchorUuids();
-            Debug.Log($"Anchor {anchor.Uuid} saved successfully.");
-        }
-        else
-        {
-            Debug.LogError($"Anchor {anchor.Uuid} failed to save with error {result.Status}");
-        }
-    }
-
-    /// <summary>
-    /// Loads all saved anchors following the three-step process:
-    /// 1. Load unbound anchors
-    /// 2. Localize each anchor
-    /// 3. Bind each anchor to an OVRSpatialAnchor
+    /// Loads all saved anchors following the proper three-step process
     /// </summary>
     public async void LoadAllSavedAnchors()
     {
@@ -297,93 +312,114 @@ public class TagSpatialAnchorManager : MonoBehaviour
 
         Debug.Log($"Loading {persistedAnchorUuids.Count} saved anchors...");
 
-        // Step 1: Load unbound anchors
-        List<OVRSpatialAnchor.UnboundAnchor> unboundAnchors = new List<OVRSpatialAnchor.UnboundAnchor>();
-        var result = await OVRSpatialAnchor.LoadUnboundAnchorsAsync(persistedAnchorUuids, unboundAnchors);
-
-        if (result.Success)
+        try
         {
+            // Step 1: Load unbound anchors
+            List<OVRSpatialAnchor.UnboundAnchor> unboundAnchors = new List<OVRSpatialAnchor.UnboundAnchor>();
+            var result = await OVRSpatialAnchor.LoadUnboundAnchorsAsync(persistedAnchorUuids, unboundAnchors);
+
+            if (!result.Success)
+            {
+                Debug.LogError($"Failed to load anchors with error {result.Status}");
+                return;
+            }
+
             Debug.Log($"Successfully loaded {unboundAnchors.Count} unbound anchors");
 
             // Step 2 & 3: Localize and bind each anchor
             foreach (var unboundAnchor in unboundAnchors)
             {
-                // Step 2: Localize the anchor
-                unboundAnchor.LocalizeAsync().ContinueWith(onLocalizedDelegate, unboundAnchor);
+                // Step 2: Try to localize with a timeout
+                var localizeTask = unboundAnchor.LocalizeAsync(localizationTimeoutSeconds);
+                await localizeTask;
+
+                if (localizeTask.Result)
+                {
+                    // Step 3: Find matching tag or create new GameObject and bind
+                    await BindAnchorToGameObject(unboundAnchor);
+                }
+                else
+                {
+                    Debug.LogWarning($"Failed to localize anchor {unboundAnchor.Uuid}. User should look around to improve mapping.");
+                }
             }
         }
-        else
+        catch (Exception ex)
         {
-            Debug.LogError($"Failed to load anchors with error {result.Status}");
+            Debug.LogError($"Error loading anchors: {ex.Message}");
         }
     }
 
     /// <summary>
-    /// Called when an unbound anchor is localized
+    /// Binds an unbound anchor to the appropriate GameObject
     /// </summary>
-    private void OnAnchorLocalized(bool success, OVRSpatialAnchor.UnboundAnchor unboundAnchor)
+    private async System.Threading.Tasks.Task BindAnchorToGameObject(OVRSpatialAnchor.UnboundAnchor unboundAnchor)
     {
-        if (success)
+        // Find if the anchor UUID matches any of our known anchor UUIDs
+        int? matchingTagId = null;
+        foreach (var pair in tagAnchorMap)
         {
-            Debug.Log($"Successfully localized anchor {unboundAnchor.Uuid}");
-
-            // Find if this anchor belongs to a specific tag
-            int? matchingTagId = null;
-            foreach (var pair in tagAnchorMap)
+            if (pair.Value != null && pair.Value.Uuid == unboundAnchor.Uuid)
             {
-                if (pair.Value != null && pair.Value.Uuid == unboundAnchor.Uuid)
+                matchingTagId = pair.Key;
+                break;
+            }
+        }
+
+        GameObject targetObject = null;
+
+        // Find the correct GameObject for this tag ID
+        if (matchingTagId.HasValue)
+        {
+            foreach (var pair in tagAnchorPairs)
+            {
+                if (pair.tagId == matchingTagId.Value && pair.anchorObject != null)
                 {
-                    matchingTagId = pair.Key;
+                    targetObject = pair.anchorObject;
                     break;
                 }
             }
-
-            GameObject targetObject = null;
-
-            // Find the matching tag configuration if available
-            if (matchingTagId.HasValue)
-            {
-                foreach (var pair in tagAnchorPairs)
-                {
-                    if (pair.tagId == matchingTagId.Value)
-                    {
-                        targetObject = pair.anchorObject;
-                        break;
-                    }
-                }
-            }
-
-            // If no matching tag found, create a new GameObject
-            if (targetObject == null)
-            {
-                // Create a new GameObject for this anchor
-                targetObject = new GameObject($"Anchor_{unboundAnchor.Uuid}");
-            }
-
-            // Step 3: Bind the anchor to an OVRSpatialAnchor component
-            var pose = unboundAnchor.Pose;
-            targetObject.transform.position = pose.position;
-            targetObject.transform.rotation = pose.rotation;
-
-            var spatialAnchor = targetObject.AddComponent<OVRSpatialAnchor>();
-            unboundAnchor.BindTo(spatialAnchor);
-
-            Debug.Log($"Bound anchor {unboundAnchor.Uuid} to GameObject {targetObject.name}");
-
-            // Update our dictionary if this is for a known tag
-            if (matchingTagId.HasValue)
-            {
-                tagAnchorMap[matchingTagId.Value] = spatialAnchor;
-            }
         }
-        else
+
+        // If no matching GameObject found, create a new one
+        if (targetObject == null)
         {
-            Debug.LogError($"Failed to localize anchor {unboundAnchor.Uuid}");
+            targetObject = new GameObject($"Anchor_{unboundAnchor.Uuid.ToString().Substring(0, 8)}");
+        }
+
+        // Make sure we have a valid Pose before binding
+        if (!unboundAnchor.TryGetPose(out var pose))
+        {
+            Debug.LogError($"Failed to get pose for anchor {unboundAnchor.Uuid}");
+            return;
+        }
+
+        // Position the GameObject at the anchor's position
+        targetObject.transform.position = pose.position;
+        targetObject.transform.rotation = pose.rotation;
+
+        // Clear any existing anchor component
+        var existingAnchor = targetObject.GetComponent<OVRSpatialAnchor>();
+        if (existingAnchor != null)
+        {
+            Destroy(existingAnchor);
+        }
+
+        // Create a new spatial anchor component and bind the unbound anchor to it
+        var spatialAnchor = targetObject.AddComponent<OVRSpatialAnchor>();
+        unboundAnchor.BindTo(spatialAnchor);
+
+        Debug.Log($"Successfully bound anchor {unboundAnchor.Uuid} to GameObject {targetObject.name}");
+
+        // Update our dictionary if this is for a known tag
+        if (matchingTagId.HasValue)
+        {
+            tagAnchorMap[matchingTagId.Value] = spatialAnchor;
         }
     }
 
     /// <summary>
-    /// Erases all saved anchors from persistent storage
+    /// Erases all saved anchors from persistent storage using batch operation
     /// </summary>
     public async void EraseAllSavedAnchors()
     {
@@ -395,17 +431,25 @@ public class TagSpatialAnchorManager : MonoBehaviour
 
         Debug.Log($"Erasing {persistedAnchorUuids.Count} saved anchors...");
 
-        var result = await OVRSpatialAnchor.EraseAnchorsAsync(anchors: null, uuids: persistedAnchorUuids);
+        try
+        {
+            // Use batch operation to erase all anchors at once
+            var result = await OVRSpatialAnchor.EraseAnchorsAsync(null, persistedAnchorUuids);
 
-        if (result.Success)
-        {
-            persistedAnchorUuids.Clear();
-            SavePersistedAnchorUuids();
-            Debug.Log("All anchors erased successfully");
+            if (result.Success)
+            {
+                persistedAnchorUuids.Clear();
+                SavePersistedAnchorUuids();
+                Debug.Log("All anchors erased successfully");
+            }
+            else
+            {
+                Debug.LogError($"Failed to erase anchors with error {result.Status}");
+            }
         }
-        else
+        catch (Exception ex)
         {
-            Debug.LogError($"Failed to erase anchors with error {result.Status}");
+            Debug.LogError($"Error erasing anchors: {ex.Message}");
         }
     }
 
@@ -432,4 +476,4 @@ public class TagSpatialAnchorManager : MonoBehaviour
     {
         EraseAllSavedAnchors();
     }
-}
+} */
