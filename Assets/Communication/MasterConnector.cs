@@ -40,7 +40,7 @@ public class MasterConnector : MonoBehaviour
     // Automatically selects which connector to use (NodeJS has priority if both are set)
     private IConnector currentConnector => useWebSocket ? nodeJSConnector : adbConnector;
     public bool IsConnected => currentConnector?.IsConnected ?? false;
-    [SerializeField] private bool sendDebugMessages = true;
+    [SerializeField] private bool sendDebugMessages = false;
 
 
     [Header("Event Handlers")]

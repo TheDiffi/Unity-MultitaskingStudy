@@ -171,24 +171,7 @@ public class NBackTask : MonoBehaviour
         };
     }
 
-    void ExitTask()
-    {
-        Debug.Log("Exiting NBack task");
-        if (trialCoroutine != null)
-            StopCoroutine(trialCoroutine);
-        stimulusRenderer.material.color = Color.black;
-        trialDataList.Clear();
-    }
 
-    void GetData()
-    {
-        Debug.Log("Sending trial data to Node.js controller");
-        foreach (var data in trialDataList)
-            currentConnector.SendNBackEvent("trial-data", data.ToString());
-
-        // Change from "nback-data-complete" to match what the Node.js controller expects
-        currentConnector.SendNBackEvent("data-complete", "Data transfer complete");
-    }
 
     void ConfigureTask(object data)
     {
@@ -429,6 +412,25 @@ public class NBackTask : MonoBehaviour
             reaction_time = reactionTimeMs,
             stimulus_end_time = stimulusEndTimeMs
         });
+    }
+
+    void ExitTask()
+    {
+        Debug.Log("Exiting NBack task");
+        if (trialCoroutine != null)
+            StopCoroutine(trialCoroutine);
+        stimulusRenderer.material.color = Color.black;
+        trialDataList.Clear();
+    }
+
+    void GetData()
+    {
+        Debug.Log("Sending trial data to Node.js controller");
+        foreach (var data in trialDataList)
+            currentConnector.SendNBackEvent("trial-data", data.ToString());
+
+        // Change from "nback-data-complete" to match what the Node.js controller expects
+        currentConnector.SendNBackEvent("data-complete", "Data transfer complete");
     }
 
     private class NbackTrialData
