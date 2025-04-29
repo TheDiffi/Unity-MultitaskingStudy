@@ -32,7 +32,7 @@ public class NBackTask : MonoBehaviour
     private bool awaitingResponse;
     private bool targetTrial;
     private float trialStartTime;
-    private List<TrialData> trialDataList = new List<TrialData>();
+    private List<NbackTrialData> trialDataList = new List<NbackTrialData>();
     private Dictionary<int, long> trialOnsetTimes = new Dictionary<int, long>(); // Store onset times by trial number
 
     private bool isPaused = false;
@@ -40,14 +40,9 @@ public class NBackTask : MonoBehaviour
     private Coroutine debugCoroutine;
     private bool inDebugMode = false;
     private bool eventsSetup = false;
-    private Stopwatch sessionStopwatch;
 
     void Start()
     {
-        // Initialize session start time
-        sessionStopwatch = new Stopwatch();
-        sessionStopwatch.Start();
-
         // Check if the connector is set and connected
         if (currentConnector == null)
         {
@@ -90,6 +85,7 @@ public class NBackTask : MonoBehaviour
 
         trialDataList.Clear();
         currentTrial = 0;
+        SessionStopwatch.StartSession();
         trialCoroutine = StartCoroutine(RunTrials());
     }
 
@@ -313,7 +309,7 @@ public class NBackTask : MonoBehaviour
             targetTrial = currentTrial >= nBackLevel && colorSequence[currentTrial] == colorSequence[currentTrial - nBackLevel];
 
             // Capture exact stimulus presentation time using the Stopwatch
-            long stimulusOnsetTime = sessionStopwatch.ElapsedMilliseconds;
+            long stimulusOnsetTime = SessionStopwatch.get.ElapsedMilliseconds;
 
             // Show the stimulus color
             stimulusRenderer.material.color = colors[colorSequence[currentTrial]];
@@ -331,11 +327,16 @@ public class NBackTask : MonoBehaviour
 
             // The stimulus is already black and feedback has been shown in HandleResponse
             // Now wait for the inter-stimulus interval before the next trial
-            yield return new WaitForSeconds(interStimulusInterval);
+            if (currentTrial < totalTrials - 1)
+            {
+                stimulusRenderer.material.color = Color.black;
+                yield return new WaitForSeconds(interStimulusInterval);
+            }
 
             currentTrial++;
         }
 
+        SessionStopwatch.StopSession();
         currentConnector.SendNBackEvent("task-complete", "Task complete");
     }
 
@@ -363,7 +364,7 @@ public class NBackTask : MonoBehaviour
         if (!awaitingResponse) return;
 
         // Capture response time using the Stopwatch for precision
-        long responseTimeMs = sessionStopwatch.ElapsedMilliseconds;
+        long responseTimeMs = SessionStopwatch.get.ElapsedMilliseconds;
 
         // Get the stored onset time for the current trial
         long stimulusOnsetTimeMs = trialOnsetTimes[currentTrial];
@@ -412,10 +413,11 @@ public class NBackTask : MonoBehaviour
         // Calculate stimulus end time based on precise onset time
         int stimulusEndTimeMs = stimulusOnsetTimeMs + Mathf.RoundToInt(stimulusDuration * 1000);
 
-        trialDataList.Add(new TrialData
+        trialDataList.Add(new NbackTrialData
         {
             study_id = studyId,
             session_number = sessionNumber,
+            timestamp = SessionStopwatch.get.ElapsedMilliseconds / 1000f,
             // Use currentTrial + 1 to match the stimulus number with the trial number (1-based index)
             stimulus_number = currentTrial + 1,
             stimulus_color = colorName,
@@ -427,6 +429,27 @@ public class NBackTask : MonoBehaviour
             reaction_time = reactionTimeMs,
             stimulus_end_time = stimulusEndTimeMs
         });
+    }
+
+    private class NbackTrialData
+    {
+        public string study_id;
+        public int session_number;
+        public float timestamp;
+        public int stimulus_number;
+        public string stimulus_color;
+        public bool is_target;
+        public bool response_made;
+        public bool is_correct;
+        public int stimulus_onset_time;
+        public int response_time;
+        public int reaction_time;
+        public int stimulus_end_time;
+
+        public override string ToString()
+        {
+            return JsonUtility.ToJson(this);
+        }
     }
 
 

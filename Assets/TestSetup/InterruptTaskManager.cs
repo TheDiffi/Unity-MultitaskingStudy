@@ -30,8 +30,7 @@ public class InterruptTaskManager : MonoBehaviour
     // Trial management
     private int currentTrial = 0;
     private int successCount = 0;
-    private List<TrialData> trialDataList = new List<TrialData>();
-    private Stopwatch sessionStopwatch = new Stopwatch();
+    private List<InterruptTrialData> trialDataList = new List<InterruptTrialData>();
 
     // Debug mode timestamp for button presses
     private Stopwatch debugStopwatch = new Stopwatch();
@@ -150,8 +149,7 @@ public class InterruptTaskManager : MonoBehaviour
         trialDataList.Clear();
 
         // Use Stopwatch for precise timing
-        sessionStopwatch.Reset();
-        sessionStopwatch.Start();
+        SessionStopwatch.StartSession();
 
         currentState = GameState.Started;
 
@@ -215,7 +213,7 @@ public class InterruptTaskManager : MonoBehaviour
         currentState = GameState.Idle;
 
         // Stop the session timer
-        sessionStopwatch.Stop();
+        SessionStopwatch.StopSession();
 
         currentController.SendPowerStabilizationEvent("task-complete", "Task completed");
     }
@@ -225,7 +223,7 @@ public class InterruptTaskManager : MonoBehaviour
         Debug.Log("Sending collected interrupt data...");
 
         // Calculate session statistics using high-precision timing
-        float totalDuration = sessionStopwatch.ElapsedMilliseconds / 1000f;
+        float totalDuration = SessionStopwatch.get.ElapsedMilliseconds / 1000f;
         float successRate = trialCount > 0 ? (float)successCount / trialCount : 0;
         string performanceRating = EvaluatePerformance(successRate);
 
@@ -298,10 +296,10 @@ public class InterruptTaskManager : MonoBehaviour
         }
 
         // Record trial data with high-precision timestamp
-        float timestamp = sessionStopwatch.ElapsedMilliseconds / 1000f;
+        float timestamp = SessionStopwatch.get.ElapsedMilliseconds / 1000f;
         int speedMs = Mathf.RoundToInt(responseTime * 1000);
 
-        var trialData = new TrialData
+        var trialData = new InterruptTrialData
         {
             study_id = studyId,
             session_number = sessionNumber,
@@ -357,14 +355,14 @@ public class InterruptTaskManager : MonoBehaviour
     }
 
     // Data structure for trial results
-    private class TrialData
+    private class InterruptTrialData
     {
-        public string study_id { get; set; }
-        public int session_number { get; set; }
-        public int accuracy { get; set; }
-        public int speed { get; set; }
-        public bool zone_correct { get; set; }
-        public float timestamp { get; set; }
+        public string study_id;
+        public int session_number;
+        public float timestamp;
+        public int accuracy;
+        public int speed;
+        public bool zone_correct;
 
         public override string ToString()
         {
