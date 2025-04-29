@@ -2,59 +2,53 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 using PassthroughCameraSamples;
 using Meta.XR.ImmersiveDebugger;
+using AprilTag;
 
-/// <summary>
-/// Connects the Meta Quest passthrough camera API with AprilTag detection.
-/// Replaces the OpenCV ArUco detection with AprilTag detection.
-/// </summary>
-[Serializable]
+
 public class MarkerGameObjectPair
 {
-    /// <summary>
-    /// The unique ID of the AR marker to track.
-    /// </summary>
     public int markerId;
-
-    /// <summary>
-    /// The GameObject to associate with this marker.
-    /// </summary>
     public GameObject gameObject;
 }
 
 public class AprilTagPassthroughManager : MonoBehaviour
 {
-    public bool findMarkers = true;
 
     [Header("Camera Setup")]
     [SerializeField] private WebCamTextureManager m_webCamTextureManager;
+    [SerializeField] private Transform m_cameraAnchor;
     private PassthroughCameraEye CameraEye => m_webCamTextureManager.Eye;
     private Vector2Int CameraResolution => m_webCamTextureManager.RequestedResolution;
-    [SerializeField] private Transform m_cameraAnchor;
+
+
+    [Header("Visualizing")]
+    // AprilTag detection components
+    [SerializeField] private bool m_drawBoundingBox = true;
+    [SerializeField] Material m_boundingBoxMaterial = null;
+    TagDrawer m_drawer;
+
 
     [Header("Tag Detection")]
     [SerializeField] private int m_decimation = 4;
     [SerializeField]
     [DebugMember(Tweakable = true, Min = 24f, Max = 28f, Category = "AprilTag")]
     private float m_tagSize_mm = 26.5f;
+
+    [Header("Object Placement")]
+    [DebugMember(Tweakable = true, Min = 0.1f, Max = 2.0f, Category = "AprilTag")]
+    [SerializeField] private bool m_enableSmoothing = false;
+    [SerializeField] private float m_smoothingFactor = 0.8f;
+    public bool m_autoplaceObjects = true;
     [SerializeField, Tooltip("List of marker IDs mapped to their corresponding GameObjects")]
     private List<MarkerGameObjectPair> m_markerGameObjectPairs = new List<MarkerGameObjectPair>();
 
-    [DebugMember(Tweakable = true, Min = 0.1f, Max = 2.0f, Category = "AprilTag")]
 
-    [SerializeField] private float m_smoothingFactor = 0.8f;
-    [SerializeField] private bool m_enableSmoothing = false;
-
-
-    [Header("Camera Positioning")]
-    // AprilTag detection components
-    private AprilTag.TagDetector m_tagDetector;
+    private TagDetector m_tagDetector;
     private Dictionary<int, GameObject> m_markerGameObjectDictionary = new Dictionary<int, GameObject>();
-    private Dictionary<int, PoseData> m_prevPoseDataDictionary = new Dictionary<int, PoseData>();
-    TagDrawer m_drawer;
-    [SerializeField] Material m_tagMaterial = null;
+    private Dictionary<int, TagPose> m_prevPoseDataDictionary = new Dictionary<int, TagPose>();
+    private Dictionary<int, bool> m_tagVisibilityStatus = new Dictionary<int, bool>();
 
     // Camera parameters
     private float m_focalLengthX, m_focalLengthY;
@@ -62,41 +56,26 @@ public class AprilTagPassthroughManager : MonoBehaviour
 
     // State flags
     private bool m_isReady = false;
-    private Dictionary<int, bool> m_tagVisibilityStatus = new Dictionary<int, bool>();
+    private bool m_isDetecting { get; set; } = false;
 
-    /// <summary>
-    /// Checks if a specified tag is currently visible
-    /// </summary>
-    /// <param name="tagId">The ID of the tag to check</param>
-    /// <returns>True if the tag is currently visible, false otherwise</returns>
     public bool IsTagVisible(int tagId)
     {
         return m_tagVisibilityStatus.ContainsKey(tagId) && m_tagVisibilityStatus[tagId];
     }
 
-    /// <summary>
-    /// Gets the current world transform for a specified tag
-    /// </summary>
-    /// <param name="tagId">The ID of the tag to get the transform for</param>
-    /// <param name="position">Output parameter that will contain the tag's position</param>
-    /// <param name="rotation">Output parameter that will contain the tag's rotation</param>
-    /// <returns>True if tag was found and transform was retrieved, false otherwise</returns>
-    public bool TryGetTagTransform(int tagId, out Vector3 position, out Quaternion rotation)
+    public bool TryGetLastTagTransform(int tagId, out TagPose pose)
     {
-        if (m_prevPoseDataDictionary.TryGetValue(tagId, out PoseData poseData) && IsTagVisible(tagId))
+        if (m_prevPoseDataDictionary.TryGetValue(tagId, out TagPose tagPose) && IsTagVisible(tagId))
         {
-            (position, rotation) = MovePoseToCameraCoordiantes(poseData.pos, poseData.rot);
+            pose = MovePoseToCameraCoordiantes(tagPose);
             return true;
         }
 
-        position = Vector3.zero;
-        rotation = Quaternion.identity;
+        pose = new TagPose(tagId, Vector3.zero, Quaternion.identity);
         return false;
     }
 
-    /// <summary>
-    /// Initializes the camera, permissions, and tag detection system.
-    /// </summary>
+
     private IEnumerator Start()
     {
         Debug.Log("[AprilTag] Starting initialization process...");
@@ -161,8 +140,8 @@ public class AprilTagPassthroughManager : MonoBehaviour
 
         Debug.Log($"[AprilTag] Camera parameters - Focal Length: ({m_focalLengthX}, {m_focalLengthY}), Principal Point: ({m_cx}, {m_cy}), Resolution: ({width}, {height})");
         Debug.Log($"[AprilTag] Initializing AprilTag detector with dimensions: {width}x{height}, decimation: {m_decimation}");
-        m_tagDetector = new AprilTag.TagDetector(width, height, m_decimation);
-        m_drawer = new TagDrawer(m_tagMaterial);
+        m_tagDetector = new TagDetector(width, height, m_decimation);
+        m_drawer = new TagDrawer(m_boundingBoxMaterial);
 
         BuildMarkerDictionary();
 
@@ -170,9 +149,6 @@ public class AprilTagPassthroughManager : MonoBehaviour
         Debug.Log("[AprilTag] Tag detection system is ready");
     }
 
-    /// <summary>
-    /// Builds the dictionary mapping marker IDs to GameObjects.
-    /// </summary>
     private void BuildMarkerDictionary()
     {
         m_markerGameObjectDictionary.Clear();
@@ -185,119 +161,125 @@ public class AprilTagPassthroughManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Updates camera poses, detects markers, and handles input for toggling visualization mode.
-    /// </summary>
     private void LateUpdate()
     {
         if (m_webCamTextureManager.WebCamTexture == null || !m_isReady)
             return;
 
-        if (findMarkers)
+        if (m_autoplaceObjects)
         {
-            DetectTags();
+            PlaceObjectsAtTags();
+        }
+        else if (m_isDetecting)
+        {
+            _ = DetectTags(m_enableSmoothing);
         }
     }
 
     /// <summary>
     /// Processes marker detection and updates the position of 3D objects.
     /// </summary>
-    private void DetectTags()
+    private void PlaceObjectsAtTags()
+    {
+        var poses = DetectTags(m_enableSmoothing);
+
+        foreach (var objectPair in m_markerGameObjectPairs)
+        {
+            if (!poses.TryGetValue(objectPair.markerId, out TagPose foundPose) || objectPair == null)
+            {
+                objectPair.gameObject.SetActive(false);
+                continue;
+            }
+
+            var targetObject = objectPair.gameObject;
+            // Ensure object is active
+            targetObject.SetActive(true);
+            targetObject.transform.position = foundPose.Position;
+            targetObject.transform.rotation = foundPose.Rotation;
+        }
+    }
+
+    public Dictionary<int, TagPose> DetectTags(bool enableSmoothing)
     {
         if (m_webCamTextureManager.WebCamTexture == null || !m_isReady)
-            return;
+            return null;
 
-
-
-        // Get the webcam texture as span
         var image = m_webCamTextureManager.WebCamTexture.AsSpan();
         if (image.IsEmpty)
         {
             Debug.LogWarning("[AprilTag] Image span is empty");
-            return;
+            return null;
         }
 
+        return DetectTagsInImage(image, enableSmoothing);
+    }
+
+
+
+    private Dictionary<int, TagPose> DetectTagsInImage(ReadOnlySpan<Color32> image, bool enableSmoothing)
+    {
         // Calculate field of view for detection and process the image
         var fov_y = Mathf.Atan2(m_cy, m_focalLengthY) * 2f;
         var tagSizeInMeters = m_tagSize_mm / 1000f;
+
+        // Process the image with the AprilTag detector
         m_tagDetector.ProcessImage(image, fov_y, tagSizeInMeters);
 
-        // Update GameObject positions based on detected tags
+        Dictionary<int, TagPose> detectedPoses = new Dictionary<int, TagPose>();
+        var tagVisibilityStatus = new Dictionary<int, bool>();
+
+        // Process the PoseData for each detected tag
         foreach (var tag in m_tagDetector.DetectedTags)
         {
-            var (drawerPos, drawerRot) = MovePoseToCameraCoordiantes(tag.Position, tag.Rotation);
-            m_drawer.Draw(tag.ID, drawerPos, drawerRot, tagSizeInMeters);
-
-            if (!m_markerGameObjectDictionary.TryGetValue(tag.ID, out GameObject targetObject) || targetObject == null)
+            if (m_drawBoundingBox)
             {
-                continue;
+                var pose = MovePoseToCameraCoordiantes(tag);
+                m_drawer.Draw(tag.ID, pose.Position, pose.Rotation, tagSizeInMeters * 2);
             }
 
-            // Convert AprilTag pose to Unity pose
-            Vector3 position = tag.Position;
-            Quaternion rotation = tag.Rotation;
-
-            // Create pose data from AprilTag detection
-            PoseData currentPoseData = new PoseData
-            {
-                pos = position,
-                rot = rotation
-            };
-
             // Apply smoothing if we have previous pose data
-            PoseData smoothedPoseData = currentPoseData;
-            if (m_enableSmoothing && m_prevPoseDataDictionary.TryGetValue(tag.ID, out PoseData prevPose))
+            var smoothedPoseData = tag;
+            if (enableSmoothing && m_prevPoseDataDictionary.TryGetValue(tag.ID, out TagPose prevPose))
             {
-                smoothedPoseData = ApplySmoothing(currentPoseData, prevPose, tag.ID);
+                smoothedPoseData = ApplySmoothing(tag, prevPose);
             }
 
             // Store current pose for next frame
             m_prevPoseDataDictionary[tag.ID] = smoothedPoseData;
+            tagVisibilityStatus[tag.ID] = true;
 
-            // Convert pose to matrix and apply to game object
-            var (gameObjPos, gameObjRot) = MovePoseToCameraCoordiantes(smoothedPoseData.pos, smoothedPoseData.rot);
-            targetObject.transform.position = gameObjPos;
-            targetObject.transform.rotation = gameObjRot;
-
-            // Ensure object is active
-            targetObject.SetActive(true);
+            // Convert pose 
+            var movedPose = MovePoseToCameraCoordiantes(smoothedPoseData);
+            detectedPoses[tag.ID] = movedPose;
         }
+
+        m_tagVisibilityStatus = tagVisibilityStatus;
+        return detectedPoses;
     }
 
-    private (Vector3 position, Quaternion rotation) MovePoseToCameraCoordiantes(Vector3 tagPosition, Quaternion tagRotation)
+    private TagPose MovePoseToCameraCoordiantes(TagPose pose)
     {
         var cameraPose = PassthroughCameraUtils.GetCameraPoseInWorld(CameraEye);
         m_cameraAnchor.position = cameraPose.position;
         m_cameraAnchor.rotation = cameraPose.rotation;
 
-        var pos = m_cameraAnchor.TransformPoint(tagPosition);
-        var rot = m_cameraAnchor.rotation * tagRotation;
+        var pos = m_cameraAnchor.TransformPoint(pose.Position);
+        var rot = m_cameraAnchor.rotation * pose.Rotation;
 
-        return (pos, rot);
+        return new TagPose(pose.ID, pos, rot);
     }
 
-
-
-    /// <summary>
-    /// Applies smoothing between current and previous pose data.
-    /// </summary>
-    /// <param name="currentPose">The current detected pose</param>
-    /// <param name="previousPose">The previous frame's pose</param>
-    /// <param name="tagId">Tag ID for logging purposes</param>
-    /// <returns>Smoothed pose data</returns>
-    private PoseData ApplySmoothing(PoseData currentPose, PoseData previousPose, int tagId)
+    private TagPose ApplySmoothing(TagPose currentPose, TagPose previousPose)
     {
-        if (previousPose.pos == Vector3.zero)
+        if (previousPose.Position == Vector3.zero)
             return currentPose;
 
         float t = m_smoothingFactor;
-        PoseData smoothedPose = new PoseData
-        {
-            pos = Vector3.Lerp(currentPose.pos, previousPose.pos, t),
-            rot = Quaternion.Slerp(currentPose.rot, previousPose.rot, t)
-        };
-
-        return smoothedPose;
+        return new TagPose(
+            currentPose.ID,
+            Vector3.Lerp(currentPose.Position, previousPose.Position, t),
+            Quaternion.Slerp(currentPose.Rotation, previousPose.Rotation, t)
+        );
     }
 
     private void LogSlowed(string message)
@@ -308,10 +290,6 @@ public class AprilTagPassthroughManager : MonoBehaviour
     }
 
 
-
-    /// <summary>
-    /// Clean up when object is destroyed.
-    /// </summary>
     private void OnDestroy()
     {
         if (m_tagDetector != null)
@@ -324,11 +302,3 @@ public class AprilTagPassthroughManager : MonoBehaviour
     }
 }
 
-/// <summary>
-/// Simple struct to store pose data for smoothing.
-/// </summary>
-public struct PoseData
-{
-    public Vector3 pos;
-    public Quaternion rot;
-}
