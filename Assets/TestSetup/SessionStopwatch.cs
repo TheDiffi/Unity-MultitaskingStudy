@@ -1,10 +1,12 @@
 using System.Diagnostics;
 using UnityEngine;
+using System;
 
 public static class SessionStopwatch
 {
     private static bool isRunning = false;
-    public static string sessionStartTime { get; private set; } = string.Empty;
+    public static string sessionStartTimeISO { get; private set; } = string.Empty;
+    public static DateTime sessionStartDateTime { get; private set; }
     public static Stopwatch get { get; } = new Stopwatch();
 
     public static void StartSession()
@@ -14,8 +16,10 @@ public static class SessionStopwatch
             get.Stop();
             get.Reset();
             get.Start();
-            //get iso time
-            sessionStartTime = System.DateTime.UtcNow.ToString("HH:mm:ss.fffZ");
+
+            // Store both the string representation and actual DateTime object
+            sessionStartDateTime = DateTime.Now;
+            sessionStartTimeISO = sessionStartDateTime.ToString("HH:mm:ss.fffZ");
             isRunning = true;
         }
         else
@@ -31,6 +35,16 @@ public static class SessionStopwatch
             get.Stop();
             isRunning = false;
         }
+    }
+
+    /// <summary>
+    /// Converts elapsed milliseconds since session start to a local DateTime
+    /// </summary>
+    /// <param name="elapsedMs">Elapsed milliseconds since session start</param>
+    /// <returns>The local DateTime corresponding to the elapsed time</returns>
+    public static DateTime ElapsedToLocalTime(long elapsedMs)
+    {
+        return sessionStartDateTime.AddMilliseconds(elapsedMs);
     }
 }
 

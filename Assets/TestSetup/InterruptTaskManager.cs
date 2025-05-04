@@ -299,17 +299,18 @@ public class InterruptTaskManager : MonoBehaviour
         }
 
         // Record trial data with high-precision timestamp
-        float timestamp = SessionStopwatch.get.ElapsedMilliseconds / 1000f;
-        int speedMs = Mathf.RoundToInt(responseTime * 1000);
+        string timestamp = SessionStopwatch.ElapsedToLocalTime(SessionStopwatch.get.ElapsedMilliseconds).ToString("o");
+        int reactionTimeMs = Mathf.RoundToInt(responseTime * 1000); // Convert response time to milliseconds
 
         var trialData = new InterruptTrialData
         {
             study_id = studyId,
             session_number = sessionNumber,
             accuracy = accuracy,        // Integer accuracy value from InterruptRenderer
-            speed = speedMs,            // Convert response time to milliseconds for speed
+            speed = traversalTime,      // Speed is the cursor traversal time in ms
             zone_correct = inGreenZone, // Whether the user hit the correct zone
-            timestamp = timestamp
+            timestamp = timestamp,
+            reaction_time_power = reactionTimeMs // Store user reaction time in milliseconds
         };
 
         trialDataList.Add(trialData);
@@ -370,10 +371,11 @@ public class InterruptTaskManager : MonoBehaviour
     {
         public string study_id;
         public int session_number;
-        public float timestamp;
+        public string timestamp;
         public int accuracy;
         public int speed;
         public bool zone_correct;
+        public int reaction_time_power;
 
         public override string ToString()
         {

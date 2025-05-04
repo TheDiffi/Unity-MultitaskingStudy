@@ -151,7 +151,7 @@ public class NBackTask : MonoBehaviour
         }
     }
 
-    // Helper function to get color name from index - for logging p urposes
+    // Helper function to get color name from index - for logging purposes
     private string GetColorNameFromIndex(int colorIndex)
     {
         return colorIndex switch
@@ -354,14 +354,17 @@ public class NBackTask : MonoBehaviour
             ? targetTrial ? "Correct response" : "Correct rejection"
             : targetTrial ? "Missed target" : "False alarm";
 
-        // First, show visual feedback
+        // First, show visual feedback and capture when stimulus actually ends
         _ = StartCoroutine(FeedbackFlash());
+
+        // Capture the actual time when the stimulus is hidden
+        long stimulusEndTimeMs = SessionStopwatch.get.ElapsedMilliseconds;
 
         // Then, send event to nodejs
         currentConnector.SendNBackEvent("trial-complete", result);
 
-        // Finally, record the trial data
-        RecordTrial(isConfirm, reactionTimeMs, responseTimeMs, result);
+        // Record the trial data with the actual end time
+        RecordTrial(isConfirm, reactionTimeMs, responseTimeMs, stimulusEndTimeMs, result);
 
         // Mark that we've received the response
         awaitingResponse = false;
@@ -372,40 +375,32 @@ public class NBackTask : MonoBehaviour
         stimulusRenderer.material.color = Color.white;
         yield return new WaitForSeconds(feedbackDuration);
         stimulusRenderer.material.color = Color.black;
+
     }
 
-    void RecordTrial(bool response, int reactionTimeMs, long responseTimeMs, string result)
+    void RecordTrial(bool response, int reactionTimeMs, long responseTimeMs, long stimulusEndTimeMs, string result)
     {
-        // Get color name from index for the stimulus_color field
-        string colorName = GetColorNameFromIndex(colorSequence[currentTrial]);
+        // Convert elapsed times to local date time for reference (optional)
+        DateTime stimulusOnsetLocalTime = SessionStopwatch.ElapsedToLocalTime(trialOnsetTimes[currentTrial]);
+        DateTime responseLocalTime = SessionStopwatch.ElapsedToLocalTime(responseTimeMs);
+        DateTime stimulusEndLocalTime = SessionStopwatch.ElapsedToLocalTime(stimulusEndTimeMs);
 
-        // Determine if the response was correct
-        bool isCorrect = targetTrial == response;
-
-        // Get the precise stimulus onset time from our stored dictionary
-        int stimulusOnsetTimeMs = (int)trialOnsetTimes[currentTrial];
-
-        // Use the precise response time from Stopwatch
-        int responseTimeFinalMs = (int)responseTimeMs;
-
-        // Calculate stimulus end time based on precise onset time
-        int stimulusEndTimeMs = stimulusOnsetTimeMs + Mathf.RoundToInt(stimulusDuration * 1000);
 
         trialDataList.Add(new NbackTrialData
         {
             study_id = studyId,
             session_number = sessionNumber,
-            timestamp = SessionStopwatch.get.ElapsedMilliseconds / 1000f,
+            timestamp = stimulusOnsetLocalTime.ToString("o"),  // ISO 8601 format with ms precision
             // Use currentTrial + 1 to match the stimulus number with the trial number (1-based index)
             stimulus_number = currentTrial + 1,
-            stimulus_color = colorName,
+            stimulus_color = GetColorNameFromIndex(colorSequence[currentTrial]),
             is_target = targetTrial,
             response_made = response,
-            is_correct = isCorrect,
-            stimulus_onset_time = stimulusOnsetTimeMs,
-            response_time = responseTimeFinalMs,
+            is_correct = targetTrial == response,
+            stimulus_onset_time = stimulusOnsetLocalTime.ToString("o"),
+            response_time = responseLocalTime.ToString("o"),
             reaction_time = reactionTimeMs,
-            stimulus_end_time = stimulusEndTimeMs
+            stimulus_end_time = stimulusEndLocalTime.ToString("o")
         });
     }
 
@@ -432,16 +427,16 @@ public class NBackTask : MonoBehaviour
     {
         public string study_id;
         public int session_number;
-        public float timestamp;
+        public string timestamp;
         public int stimulus_number;
         public string stimulus_color;
         public bool is_target;
         public bool response_made;
         public bool is_correct;
-        public int stimulus_onset_time;
-        public int response_time;
+        public string stimulus_onset_time;
+        public string response_time;
         public int reaction_time;
-        public int stimulus_end_time;
+        public string stimulus_end_time;
 
         public override string ToString()
         {
