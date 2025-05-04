@@ -92,5 +92,17 @@ namespace TryAR.MarkerTracking
             //     matrix.GetColumn(2).magnitude
             // );
         }
+
+        public class PoseData
+        {
+            public Vector3 pos;
+            public Quaternion rot;
+
+            public PoseData()
+            {
+                pos = Vector3.zero;
+                rot = Quaternion.identity;
+            }
+        }
     }
 }
