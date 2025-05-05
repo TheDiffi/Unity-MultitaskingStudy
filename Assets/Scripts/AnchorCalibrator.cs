@@ -1,12 +1,16 @@
 using System.Collections;
 using System.Collections.Generic;
+using System;
 using UnityEngine;
 using AprilTag;
+using Meta.XR.BuildingBlocks;
+using Meta.XR.ImmersiveDebugger;
 
 public class AnchorCalibrator : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private AprilTagPassthroughManager aprilTagManager;
+    [SerializeField] private SpatialAnchorCoreBuildingBlock anchorBuildingBlock = null;
 
     [Header("Anchor Configuration")]
     [SerializeField] private List<AnchorTagPair> anchorTagPairs = new List<AnchorTagPair>();
@@ -14,22 +18,24 @@ public class AnchorCalibrator : MonoBehaviour
     [Header("Calibration Settings")]
     [SerializeField] private int samplesToCollect = 10;
     [SerializeField] private bool autoCalibrate = false;
+    [DebugMember(Tweakable = true, Min = 0.1f, Max = 2.0f, Category = "Anchors")]
 
     // Keep track of active anchors and their mapping to tag IDs
     private Dictionary<int, AnchorData> tagToAnchorMap = new Dictionary<int, AnchorData>();
+    private Dictionary<int, Guid> tagToAnchorUuidMap = new Dictionary<int, Guid>();
     private bool isCalibrating = false;
 
-    [System.Serializable]
+    [Serializable]
     public class AnchorTagPair
     {
         public int tagId;
-        public GameObject anchorObject;
+        public GameObject anchorPrefab;
     }
 
     private class AnchorData
     {
         public GameObject gameObject;
-        public OVRSpatialAnchor anchor;
+        public Guid anchorUuid;
     }
 
     private void Start()
@@ -46,38 +52,202 @@ public class AnchorCalibrator : MonoBehaviour
             }
         }
 
-        // Initialize anchor map
-        InitializeAnchors();
+        // Find SpatialAnchorCoreBuildingBlock if not assigned
+        if (anchorBuildingBlock == null)
+        {
+            anchorBuildingBlock = FindAnyObjectByType<SpatialAnchorCoreBuildingBlock>();
+            if (anchorBuildingBlock == null)
+            {
+                Debug.LogError("AnchorCalibrator: SpatialAnchorCoreBuildingBlock not found!");
+                enabled = false;
+                return;
+            }
+        }
+
+        // Subscribe to anchor events
+        SubscribeToAnchorEvents();
 
         // Auto-calibrate if enabled
         if (autoCalibrate)
         {
-            StartCoroutine(CalibrateAnchors());
+            CalibrateAllAnchors();
         }
     }
 
-    private void InitializeAnchors()
+    private void OnDestroy()
     {
-        tagToAnchorMap.Clear();
+        // Unsubscribe from events when this component is destroyed
+        UnsubscribeFromAnchorEvents();
+    }
 
-        foreach (var pair in anchorTagPairs)
+    /// <summary>
+    /// Subscribe to the SpatialAnchorCoreBuildingBlock events using UnityEvent's AddListener method
+    /// </summary>
+    private void SubscribeToAnchorEvents()
+    {
+        if (anchorBuildingBlock != null)
         {
-            if (pair.anchorObject != null)
+            anchorBuildingBlock.OnAnchorCreateCompleted.AddListener(HandleAnchorCreateCompleted);
+            anchorBuildingBlock.OnAnchorsLoadCompleted.AddListener(HandleAnchorsLoadCompleted);
+            anchorBuildingBlock.OnAnchorsEraseAllCompleted.AddListener(HandleAnchorsEraseAllCompleted);
+            anchorBuildingBlock.OnAnchorEraseCompleted.AddListener(HandleAnchorEraseCompleted);
+        }
+    }
+
+    /// <summary>
+    /// Unsubscribe from the SpatialAnchorCoreBuildingBlock events
+    /// </summary>
+    private void UnsubscribeFromAnchorEvents()
+    {
+        if (anchorBuildingBlock != null)
+        {
+            anchorBuildingBlock.OnAnchorCreateCompleted.RemoveListener(HandleAnchorCreateCompleted);
+            anchorBuildingBlock.OnAnchorsLoadCompleted.RemoveListener(HandleAnchorsLoadCompleted);
+            anchorBuildingBlock.OnAnchorsEraseAllCompleted.RemoveListener(HandleAnchorsEraseAllCompleted);
+            anchorBuildingBlock.OnAnchorEraseCompleted.RemoveListener(HandleAnchorEraseCompleted);
+        }
+    }
+
+    /// <summary>
+    /// Called when an anchor is created successfully - matches the UnityEvent delegate signature
+    /// </summary>
+    private void HandleAnchorCreateCompleted(OVRSpatialAnchor anchor, OVRSpatialAnchor.OperationResult result)
+    {
+        if (result == OVRSpatialAnchor.OperationResult.Success)
+        {
+            Debug.Log($"Anchor created successfully with UUID: {anchor.Uuid}");
+
+            // Find which tag this anchor belongs to based on the GameObject
+            int associatedTagId = -1;
+
+            // First, try to find the tag ID based on pending anchors
+            foreach (var pair in tagToAnchorMap)
             {
-                // Ensure the GameObject has an OVRSpatialAnchor component
-                OVRSpatialAnchor anchor = pair.anchorObject.GetComponent<OVRSpatialAnchor>();
-                if (anchor == null)
+                if ((pair.Value.gameObject == null || pair.Value.gameObject == anchor.gameObject) &&
+                    pair.Value.anchorUuid == Guid.Empty)
                 {
-                    anchor = pair.anchorObject.AddComponent<OVRSpatialAnchor>();
+                    pair.Value.gameObject = anchor.gameObject;
+                    pair.Value.anchorUuid = anchor.Uuid;
+                    tagToAnchorUuidMap[pair.Key] = anchor.Uuid;
+                    associatedTagId = pair.Key;
+                    break;
+                }
+            }
+
+            if (associatedTagId != -1)
+            {
+                Debug.Log($"Associated anchor with tag ID: {associatedTagId}");
+            }
+            else
+            {
+                Debug.LogWarning($"Could not determine which tag ID is associated with this anchor: {anchor.Uuid}");
+            }
+        }
+        else
+        {
+            Debug.LogError($"Failed to create anchor: {result}");
+        }
+    }
+
+    /// <summary>
+    /// Called when anchors are loaded successfully - matches the UnityEvent delegate signature
+    /// </summary>
+    private void HandleAnchorsLoadCompleted(List<OVRSpatialAnchor> anchors)
+    {
+        Debug.Log($"Loaded {anchors.Count} anchors successfully");
+
+        // Update our local object references for the loaded anchors
+        foreach (var anchor in anchors)
+        {
+            // Find the tag ID for this UUID
+            int tagId = -1;
+            foreach (var pair in tagToAnchorUuidMap)
+            {
+                if (pair.Value == anchor.Uuid)
+                {
+                    tagId = pair.Key;
+                    break;
+                }
+            }
+
+            if (tagId != -1)
+            {
+                // Update the reference in our mapping
+                if (tagToAnchorMap.TryGetValue(tagId, out AnchorData anchorData))
+                {
+                    anchorData.gameObject = anchor.gameObject;
+                }
+                else
+                {
+                    // Create a new mapping entry
+                    tagToAnchorMap[tagId] = new AnchorData
+                    {
+                        gameObject = anchor.gameObject,
+                        anchorUuid = anchor.Uuid
+                    };
                 }
 
-                // Add to mapping
-                tagToAnchorMap[pair.tagId] = new AnchorData
-                {
-                    gameObject = pair.anchorObject,
-                    anchor = anchor
-                };
+                Debug.Log($"Loaded anchor for tag {tagId} with UUID: {anchor.Uuid}");
             }
+        }
+    }
+
+    /// <summary>
+    /// Called when all anchors are erased - matches the UnityEvent delegate signature
+    /// </summary>
+    private void HandleAnchorsEraseAllCompleted(OVRSpatialAnchor.OperationResult result)
+    {
+        if (result == OVRSpatialAnchor.OperationResult.Success)
+        {
+            Debug.Log("All anchors erased successfully");
+            tagToAnchorUuidMap.Clear();
+
+            // Clear UUID references but keep game object references
+            foreach (var pair in tagToAnchorMap)
+            {
+                pair.Value.anchorUuid = Guid.Empty;
+            }
+        }
+        else
+        {
+            Debug.LogError($"Failed to erase all anchors: {result}");
+        }
+    }
+
+    /// <summary>
+    /// Called when a specific anchor is erased - matches the UnityEvent delegate signature
+    /// </summary>
+    private void HandleAnchorEraseCompleted(OVRSpatialAnchor anchor, OVRSpatialAnchor.OperationResult result)
+    {
+        if (result == OVRSpatialAnchor.OperationResult.Success)
+        {
+            Debug.Log($"Anchor {anchor.Uuid} erased successfully");
+
+            // Remove this UUID from our maps
+            int tagId = -1;
+            foreach (var pair in tagToAnchorUuidMap)
+            {
+                if (pair.Value == anchor.Uuid)
+                {
+                    tagId = pair.Key;
+                    break;
+                }
+            }
+
+            if (tagId != -1)
+            {
+                _ = tagToAnchorUuidMap.Remove(tagId);
+
+                // Clear UUID reference but keep game object reference
+                if (tagToAnchorMap.TryGetValue(tagId, out AnchorData anchorData))
+                {
+                    anchorData.anchorUuid = Guid.Empty;
+                }
+            }
+        }
+        else
+        {
+            Debug.LogError($"Failed to erase anchor {anchor.Uuid}: {result}");
         }
     }
 
@@ -88,7 +258,8 @@ public class AnchorCalibrator : MonoBehaviour
     {
         if (!isCalibrating)
         {
-            StartCoroutine(CalibrateAnchors());
+            Debug.Log("Starting calibration for all anchors...");
+            _ = StartCoroutine(CalibrateAnchors());
         }
         else
         {
@@ -120,10 +291,10 @@ public class AnchorCalibrator : MonoBehaviour
         Dictionary<int, List<Quaternion>> rotationSamplesMap = new Dictionary<int, List<Quaternion>>();
 
         // Initialize collections for each tag we need to calibrate
-        foreach (var pair in tagToAnchorMap)
+        foreach (var pair in anchorTagPairs)
         {
-            positionSamplesMap[pair.Key] = new List<Vector3>();
-            rotationSamplesMap[pair.Key] = new List<Quaternion>();
+            positionSamplesMap[pair.tagId] = new List<Vector3>();
+            rotationSamplesMap[pair.tagId] = new List<Quaternion>();
         }
 
         // Collect multiple samples for all tags simultaneously
@@ -131,12 +302,14 @@ public class AnchorCalibrator : MonoBehaviour
         for (int i = 0; i < samplesToCollect; i++)
         {
             // Get poses for all tags in a single call
-            Dictionary<int, TagPose> allPoses = aprilTagManager.DetectTags(false);
+            Dictionary<int, TagPose> allPoses = aprilTagManager.DetectTags(true);
+
             if (allPoses != null)
             {
                 // Process all visible tags we're interested in
-                foreach (var tagId in tagToAnchorMap.Keys)
+                foreach (var pair in anchorTagPairs)
                 {
+                    int tagId = pair.tagId;
                     if (allPoses.TryGetValue(tagId, out TagPose pose))
                     {
                         // Add sample to appropriate collections
@@ -148,10 +321,16 @@ public class AnchorCalibrator : MonoBehaviour
         }
 
         // Process the collected samples for each tag
-        foreach (var pair in tagToAnchorMap)
+        foreach (var pair in anchorTagPairs)
         {
-            int tagId = pair.Key;
-            AnchorData anchorData = pair.Value;
+            int tagId = pair.tagId;
+            GameObject prefab = pair.anchorPrefab;
+
+            if (prefab == null)
+            {
+                Debug.LogWarning($"No prefab specified for tag ID {tagId}. Skipping calibration.");
+                continue;
+            }
 
             List<Vector3> positionSamples = positionSamplesMap[tagId];
             List<Quaternion> rotationSamples = rotationSamplesMap[tagId];
@@ -159,25 +338,25 @@ public class AnchorCalibrator : MonoBehaviour
             // Check if we have sufficient samples for this tag
             if (positionSamples.Count > 0)
             {
-                // Calculate average position
-                Vector3 avgPosition = Vector3.zero;
-                foreach (var position in positionSamples)
-                {
-                    avgPosition += position;
-                }
-                avgPosition /= positionSamples.Count;
+                /*  // Calculate average position
+                 Vector3 avgPosition = Vector3.zero;
+                 foreach (var position in positionSamples)
+                 {
+                     avgPosition += position;
+                 }
+                 avgPosition /= positionSamples.Count;
 
-                // Calculate average rotation (simple approach)
-                Quaternion avgRotation = rotationSamples[0];
-                for (int i = 1; i < rotationSamples.Count; i++)
-                {
-                    avgRotation = Quaternion.Slerp(avgRotation, rotationSamples[i], 1.0f / (i + 1));
-                }
+                 // Calculate average rotation (simple approach)
+                 Quaternion avgRotation = rotationSamples[0];
+                 for (int i = 1; i < rotationSamples.Count; i++)
+                 {
+                     avgRotation = Quaternion.Slerp(avgRotation, rotationSamples[i], 1.0f / (i + 1));
+                 } */
 
-                // Update the anchor's transform
-                UpdateAnchorTransform(anchorData, avgPosition, avgRotation);
+                // Use the building block to create/update the anchor
+                CreateOrUpdateSpatialAnchor(tagId, prefab, positionSamples[1], rotationSamples[1]);
 
-                Debug.Log($"Calibrated anchor for tag {tagId} at position {avgPosition} with {positionSamples.Count} samples");
+                //Debug.Log($"Calibrated anchor for tag {tagId} at position {avgPosition} with {positionSamples.Count} samples");
             }
             else
             {
@@ -190,49 +369,146 @@ public class AnchorCalibrator : MonoBehaviour
     }
 
     /// <summary>
-    /// Updates the transform of the spatial anchor
+    /// Creates or updates a spatial anchor using the building block
     /// </summary>
-    private void UpdateAnchorTransform(AnchorData anchorData, Vector3 position, Quaternion rotation)
+    public void CreateOrUpdateSpatialAnchor(int tagId, GameObject prefab, Vector3 position, Quaternion rotation)
     {
-        if (anchorData == null || anchorData.gameObject == null)
-            return;
+        // Check if we already have an instance for this tag
+        GameObject existingAnchorObject = null;
+        OVRSpatialAnchor existingAnchor = null;
 
-        // Set the new transform
-        anchorData.gameObject.transform.position = position;
-        anchorData.gameObject.transform.rotation = rotation;
-    }
-
-    /// <summary>
-    /// Saves all anchors to persistent storage
-    /// </summary>
-    public async void SaveAllAnchors()
-    {
-        List<OVRSpatialAnchor> anchorsToSave = new List<OVRSpatialAnchor>();
-
-        foreach (var pair in tagToAnchorMap)
+        // Check if we already have an anchor for this tag ID in our tracking dictionary
+        if (tagToAnchorMap.TryGetValue(tagId, out AnchorData anchorData) && anchorData.gameObject != null)
         {
-            if (pair.Value?.anchor != null && pair.Value.anchor.Created)
+            existingAnchorObject = anchorData.gameObject;
+            existingAnchor = existingAnchorObject.GetComponent<OVRSpatialAnchor>();
+        }
+
+        // If there's an existing anchor, destroy it first
+        if (existingAnchorObject != null && existingAnchor != null)
+        {
+            Debug.Log($"Destroying existing anchor for tag {tagId} with UUID {existingAnchor.Uuid}");
+
+            // Remove from our maps
+            Guid anchorUuid = existingAnchor.Uuid;
+            if (tagToAnchorUuidMap.ContainsKey(tagId))
             {
-                anchorsToSave.Add(pair.Value.anchor);
+                tagToAnchorUuidMap.Remove(tagId);
+            }
+
+            // Make sure we have valid objects before destroying
+            if (existingAnchorObject != null)
+            {
+                // Destroy the GameObject with the anchor
+                Destroy(existingAnchorObject);
+            }
+
+            // Also erase from storage if it was saved - only if we have a valid UUID
+            if (anchorUuid != Guid.Empty)
+            {
+                StartCoroutine(EraseAnchorAsync(anchorUuid));
             }
         }
 
-        if (anchorsToSave.Count > 0)
+        // Create a new anchor at the desired position and rotation
+        Debug.Log($"Creating new anchor for tag {tagId} at position {position}");
+        anchorBuildingBlock.InstantiateSpatialAnchor(prefab, position, rotation);
+
+        // Store a placeholder until the create complete event fires
+        tagToAnchorMap[tagId] = new AnchorData
         {
-            var result = await OVRSpatialAnchor.SaveAnchorsAsync(anchorsToSave);
-            if (result.Success)
+            gameObject = null,  // Will be set in the callback
+            anchorUuid = Guid.Empty // Will be set in the callback
+        };
+    }
+
+    /// <summary>
+    /// Erases a specific anchor by UUID asynchronously
+    /// </summary>
+    private IEnumerator EraseAnchorAsync(Guid uuid)
+    {
+        if (uuid != Guid.Empty)
+        {
+            bool eraseSuccessful = false;
+            try
             {
-                Debug.Log($"Successfully saved {anchorsToSave.Count} anchors");
+                // Use the building block to erase the anchor instead of direct API
+                anchorBuildingBlock.EraseAnchorByUuid(uuid);
+                eraseSuccessful = true;
             }
-            else
+            catch (Exception ex)
             {
-                Debug.LogError($"Failed to save anchors: {result.Status}");
+                Debug.LogError($"Error erasing anchor with UUID {uuid}: {ex.Message}");
+            }
+
+            // Wait a short time to allow the erase operation to complete
+            if (eraseSuccessful)
+            {
+                yield return new WaitForSeconds(0.1f);
+                Debug.Log($"Erased anchor with UUID: {uuid}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Loads all saved anchors that are mapped to tags
+    /// </summary>
+    public void LoadAllAnchors()
+    {
+        List<Guid> uuidsToLoad = new List<Guid>();
+        Dictionary<Guid, int> uuidToTagMap = new Dictionary<Guid, int>();
+        Dictionary<int, GameObject> tagToPrefabMap = new Dictionary<int, GameObject>();
+
+        // Gather all UUIDs to load and map prefabs to UUIDs
+        foreach (var pair in tagToAnchorUuidMap)
+        {
+            int tagId = pair.Key;
+            Guid uuid = pair.Value;
+
+            if (uuid != Guid.Empty)
+            {
+                uuidsToLoad.Add(uuid);
+                uuidToTagMap[uuid] = tagId;
+
+                // Find the prefab for this tag
+                foreach (var anchorPair in anchorTagPairs)
+                {
+                    if (anchorPair.tagId == tagId && anchorPair.anchorPrefab != null)
+                    {
+                        tagToPrefabMap[tagId] = anchorPair.anchorPrefab;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (uuidsToLoad.Count > 0)
+        {
+            // Use the building block to load all the anchors at once
+            foreach (int tagId in tagToPrefabMap.Keys)
+            {
+                if (tagToAnchorUuidMap.TryGetValue(tagId, out Guid uuid) &&
+                    tagToPrefabMap.TryGetValue(tagId, out GameObject prefab))
+                {
+                    // Use the building block to load and instantiate this anchor
+                    List<Guid> singleUuidList = new List<Guid> { uuid };
+                    anchorBuildingBlock.LoadAndInstantiateAnchors(prefab, singleUuidList);
+                }
             }
         }
         else
         {
-            Debug.LogWarning("No valid anchors to save");
+            Debug.LogWarning("No saved anchor UUIDs to load");
         }
+    }
+
+    /// <summary>
+    /// Erases all saved spatial anchors
+    /// </summary>
+    public void EraseAllAnchors()
+    {
+        anchorBuildingBlock.EraseAllAnchors();
+        // The tagToAnchorUuidMap will be cleared in the HandleAnchorsEraseAllCompleted callback
     }
 
     /// <summary>
@@ -240,7 +516,18 @@ public class AnchorCalibrator : MonoBehaviour
     /// </summary>
     public void CalibrateAnchorByTagId(int tagId)
     {
-        if (!tagToAnchorMap.ContainsKey(tagId))
+        // Check if this tag ID exists in our configuration
+        bool tagFound = false;
+        foreach (var pair in anchorTagPairs)
+        {
+            if (pair.tagId == tagId)
+            {
+                tagFound = true;
+                break;
+            }
+        }
+
+        if (!tagFound)
         {
             Debug.LogError($"No anchor configured for tag ID {tagId}");
             return;
@@ -248,7 +535,7 @@ public class AnchorCalibrator : MonoBehaviour
 
         if (!isCalibrating)
         {
-            StartCoroutine(CalibrateSpecificAnchor(tagId));
+            _ = StartCoroutine(CalibrateSpecificAnchor(tagId));
         }
         else
         {
@@ -264,9 +551,20 @@ public class AnchorCalibrator : MonoBehaviour
         isCalibrating = true;
         Debug.Log($"Starting calibration for tag {tagId}...");
 
-        if (!tagToAnchorMap.TryGetValue(tagId, out AnchorData anchorData))
+        // Find the prefab for this tag
+        GameObject prefab = null;
+        foreach (var pair in anchorTagPairs)
         {
-            Debug.LogError($"No anchor data found for tag {tagId}");
+            if (pair.tagId == tagId)
+            {
+                prefab = pair.anchorPrefab;
+                break;
+            }
+        }
+
+        if (prefab == null)
+        {
+            Debug.LogError($"No prefab found for tag {tagId}");
             isCalibrating = false;
             yield break;
         }
@@ -275,7 +573,8 @@ public class AnchorCalibrator : MonoBehaviour
         List<Quaternion> rotationSamples = new List<Quaternion>();
 
         // Collect multiple samples
-        for (int i = 0; i < samplesToCollect; i++)
+        int sampleCount = 0;
+        while (sampleCount < samplesToCollect)
         {
             var allPoses = aprilTagManager.DetectTags(false);
             if (allPoses != null && allPoses.TryGetValue(tagId, out TagPose pose))
@@ -283,12 +582,10 @@ public class AnchorCalibrator : MonoBehaviour
                 // Add sample
                 positionSamples.Add(pose.Position);
                 rotationSamples.Add(pose.Rotation);
+                sampleCount++;
             }
-            else
-            {
-                i--; // Retry this sample
-                yield return null;
-            }
+
+
         }
 
         // Calculate averages and update
@@ -308,7 +605,9 @@ public class AnchorCalibrator : MonoBehaviour
                 avgRotation = Quaternion.Slerp(avgRotation, rotationSamples[i], 1.0f / (i + 1));
             }
 
-            UpdateAnchorTransform(anchorData, avgPosition, avgRotation);
+            // Create or update the spatial anchor using the building block
+            CreateOrUpdateSpatialAnchor(tagId, prefab, avgPosition, avgRotation);
+
             Debug.Log($"Calibration completed for tag {tagId}");
         }
         else

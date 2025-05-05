@@ -29,7 +29,7 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/TestSetup/TestSetup.unity
     guid: 2ec53a8084c934a4bbf2d8b63d737bef
-  - enabled: 1
+  - enabled: 0
     path: Assets/TestSetup/ARTestSetupFull.unity
     guid: cdce5e6f664c0934a9174c47e7cbf7e5
   - enabled: 0
@@ -41,6 +41,12 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/TestSetup/VRTestSetup.unity
     guid: c87829cf18ecd8947b2c701758801fb5
+  - enabled: 0
+    path: Assets/Bridge2/Calibration Test.unity
+    guid: 927b5969c32c7104489c028d928faca9
+  - enabled: 1
+    path: Assets/TestSetup/MarkerTestSetup.unity
+    guid: 65c8907eca483774e8b2c24dcc9e6d71
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: f2bf97b3acdb64248a707c407c9fc54e, type: 2}
     com.unity.xr.arfoundation.simulation_settings: {fileID: 11400000, guid: 89f9b9c1e6d70ed4d997c5ef9a41f3eb, type: 2}

@@ -7,14 +7,14 @@ using Meta.XR.ImmersiveDebugger;
 using AprilTag;
 
 
-public class MarkerGameObjectPair
-{
-    public int markerId;
-    public GameObject gameObject;
-}
-
 public class AprilTagPassthroughManager : MonoBehaviour
 {
+    [Serializable]
+    public class MarkerGameObjectPair
+    {
+        public int markerId;
+        public GameObject gameObject;
+    }
 
     [Header("Camera Setup")]
     [SerializeField] private WebCamTextureManager m_webCamTextureManager;
@@ -43,7 +43,6 @@ public class AprilTagPassthroughManager : MonoBehaviour
     public bool m_autoplaceObjects = true;
     [SerializeField, Tooltip("List of marker IDs mapped to their corresponding GameObjects")]
     private List<MarkerGameObjectPair> m_markerGameObjectPairs = new List<MarkerGameObjectPair>();
-
 
     private TagDetector m_tagDetector;
     private Dictionary<int, GameObject> m_markerGameObjectDictionary = new Dictionary<int, GameObject>();
@@ -179,10 +178,10 @@ public class AprilTagPassthroughManager : MonoBehaviour
     /// <summary>
     /// Processes marker detection and updates the position of 3D objects.
     /// </summary>
-    private void PlaceObjectsAtTags()
+    public void PlaceObjectsAtTags()
     {
-        var poses = DetectTags(m_enableSmoothing);
-
+        var poses = DetectTags(false);
+        Debug.Log($"[AprilTag] Detected {poses.Count} tags");
         foreach (var objectPair in m_markerGameObjectPairs)
         {
             if (!poses.TryGetValue(objectPair.markerId, out TagPose foundPose) || objectPair == null)
@@ -198,6 +197,7 @@ public class AprilTagPassthroughManager : MonoBehaviour
             targetObject.transform.rotation = foundPose.Rotation;
         }
     }
+
 
     public Dictionary<int, TagPose> DetectTags(bool enableSmoothing)
     {

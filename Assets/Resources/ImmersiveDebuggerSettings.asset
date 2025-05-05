@@ -16,6 +16,7 @@ MonoBehaviour:
   - AssemblyName: Assembly-CSharp
     DebugTypes:
     - AprilTagPassthroughManager
+    - AnchorCalibrator
   - AssemblyName: Meta.XR.ImmersiveDebugger
     DebugTypes:
     - TestSceneUsage
