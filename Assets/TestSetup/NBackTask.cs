@@ -6,8 +6,9 @@ using Debug = UnityEngine.Debug;
 
 public class NBackTask : MonoBehaviour
 {
+
     [SerializeField]
-    private Renderer stimulusRenderer;
+    private LightColorSetter lightColorSetter; // Added LightColorSetter reference
 
     private float stimulusDuration = 2f;
     private float interStimulusInterval = 2f;
@@ -127,7 +128,7 @@ public class NBackTask : MonoBehaviour
             debugCoroutine = null;
         }
 
-        stimulusRenderer.material.color = Color.black;
+        lightColorSetter.TurnOff();
         currentConnector.SendNBackEvent("debug-mode", "Debug mode deactivated");
     }
 
@@ -138,7 +139,7 @@ public class NBackTask : MonoBehaviour
         while (inDebugMode)
         {
             // Cycle through available colors
-            stimulusRenderer.material.color = colors[colorIndex];
+            lightColorSetter.SetColor(colors[colorIndex]);
 
             // Log the current color in debug mode
             Debug.Log($"Debug mode color: {GetColorNameFromIndex(colorIndex)}");
@@ -290,7 +291,7 @@ public class NBackTask : MonoBehaviour
             long stimulusOnsetTime = SessionStopwatch.get.ElapsedMilliseconds;
 
             // Show the stimulus color
-            stimulusRenderer.material.color = colors[colorSequence[currentTrial]];
+            lightColorSetter.SetColor(colors[colorSequence[currentTrial]]);
             trialStartTime = Time.time;
             awaitingResponse = true;
 
@@ -307,7 +308,7 @@ public class NBackTask : MonoBehaviour
             // Now wait for the inter-stimulus interval before the next trial
             if (currentTrial < totalTrials - 1)
             {
-                stimulusRenderer.material.color = Color.black;
+                lightColorSetter.TurnOff();
                 yield return new WaitForSeconds(interStimulusInterval);
             }
 
@@ -372,10 +373,9 @@ public class NBackTask : MonoBehaviour
 
     IEnumerator FeedbackFlash()
     {
-        stimulusRenderer.material.color = Color.white;
+        lightColorSetter.SetColor(Color.white);
         yield return new WaitForSeconds(feedbackDuration);
-        stimulusRenderer.material.color = Color.black;
-
+        lightColorSetter.TurnOff();
     }
 
     void RecordTrial(bool response, int reactionTimeMs, long responseTimeMs, long stimulusEndTimeMs, string result)
@@ -409,7 +409,7 @@ public class NBackTask : MonoBehaviour
         Debug.Log("Exiting NBack task");
         if (trialCoroutine != null)
             StopCoroutine(trialCoroutine);
-        stimulusRenderer.material.color = Color.black;
+        lightColorSetter.TurnOff();
         trialDataList.Clear();
     }
 

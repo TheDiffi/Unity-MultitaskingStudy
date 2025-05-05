@@ -315,6 +315,7 @@ GameObject:
   - component: {fileID: 6620713032038375855}
   - component: {fileID: 957462349226554322}
   - component: {fileID: 6575176082723559966}
+  - component: {fileID: 177252125802979151}
   m_Layer: 0
   m_Name: Light
   m_TagString: Untagged
@@ -457,3 +458,17 @@ Light:
   m_LightUnit: 1
   m_LuxAtDistance: 1
   m_EnableSpotReflector: 1
+--- !u!114 &177252125802979151
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6808949852672946128}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 199c745971a44c54b921fa2cb3090eda, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  lights: []
+  renderers: []
