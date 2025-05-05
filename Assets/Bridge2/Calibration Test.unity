@@ -2028,7 +2028,6 @@ MonoBehaviour:
     gameObject: {fileID: 1372514659}
   - markerId: 1
     gameObject: {fileID: 2804842520265147913}
-  anchorBuildingBlock: {fileID: 1743948340}
 --- !u!4 &1143784096
 Transform:
   m_ObjectHideFlags: 0
@@ -2900,12 +2899,12 @@ SceneRoots:
   - {fileID: 350082963}
   - {fileID: 141233605}
   - {fileID: 1743948342}
+  - {fileID: 1004555202}
+  - {fileID: 292105325}
   - {fileID: 606525940}
   - {fileID: 100985595}
   - {fileID: 1143784096}
   - {fileID: 1823295116}
-  - {fileID: 292105325}
-  - {fileID: 1004555202}
   - {fileID: 1854003185}
   - {fileID: 204901882}
   - {fileID: 2804842520265147912}
