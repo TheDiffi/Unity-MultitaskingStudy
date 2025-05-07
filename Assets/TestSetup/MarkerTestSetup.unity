@@ -1775,7 +1775,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: eca8c20a534688c419a4a0e4aa298e0a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  lightColorSetter: {fileID: 0}
+  lightColorSetter: {fileID: 6661960637288588745}
   currentConnector: {fileID: 207531865}
 --- !u!114 &207531863
 MonoBehaviour:
@@ -1792,7 +1792,7 @@ MonoBehaviour:
   connectOnStart: 1
   reconnectOnDisconnect: 1
   reconnectDelay: 3
-  pollingInterval: 0.1
+  pollingInterval: 0.01
 --- !u!4 &207531864
 Transform:
   m_ObjectHideFlags: 0
@@ -8017,7 +8017,7 @@ MonoBehaviour:
   m_boundingBoxMaterial: {fileID: 2100000, guid: 5828f113fb726f64eab08340333edd86, type: 2}
   m_decimation: 4
   m_tagSize_mm: 26.5
-  m_autoplaceObjects: 0
+  m_autoplaceObjects: 1
   m_markerGameObjectPairs:
   - markerId: 0
     gameObject: {fileID: 2097231064}
@@ -10902,8 +10902,8 @@ Transform:
   - {fileID: 929200027}
   - {fileID: 1324057013}
   - {fileID: 2097231068}
-  - {fileID: 809296862}
   - {fileID: 965453331}
+  - {fileID: 809296862}
   - {fileID: 163013213}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -17327,6 +17327,17 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: d149aa1029b5fa54da43e722b47af896, type: 3}
+--- !u!114 &6661960637288588745 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8097009337295028074, guid: d149aa1029b5fa54da43e722b47af896, type: 3}
+  m_PrefabInstance: {fileID: 6661960637288588744}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 199c745971a44c54b921fa2cb3090eda, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

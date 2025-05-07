@@ -237,15 +237,24 @@ public class AprilTagPassthroughManager : MonoBehaviour
     /// <summary>
     /// Processes marker detection and updates the position of 3D objects.
     /// </summary>
-    public void PlaceObjectsAtTags()
+    public bool PlaceObjectsAtTags(List<int> includedIds)
     {
         var poses = DetectTags(false);
+        var allPosesDetected = false;
         Debug.Log($"[AprilTag] Detected {poses.Count} tags");
         foreach (var objectPair in m_markerGameObjectPairs)
         {
+            if (!includedIds.Contains(objectPair.markerId))
+            {
+                objectPair.gameObject.SetActive(false);
+                continue;
+            }
+
             if (!poses.TryGetValue(objectPair.markerId, out TagPose foundPose) || objectPair == null)
             {
                 objectPair.gameObject.SetActive(false);
+                allPosesDetected = false;
+                Debug.LogWarning($"[AprilTag] Tag {objectPair.markerId} not detected or object pair is null");
                 continue;
             }
 
@@ -255,8 +264,28 @@ public class AprilTagPassthroughManager : MonoBehaviour
             targetObject.transform.position = foundPose.Position;
             targetObject.transform.rotation = foundPose.Rotation;
         }
+
+        return allPosesDetected;
     }
 
+    public bool PlaceObjectsAtTags()
+    {
+        return PlaceObjectsAtTags(m_markerGameObjectPairs.ConvertAll(pair => pair.markerId));
+    }
+
+    public void ClearTags()
+    {
+        foreach (var objectPair in m_markerGameObjectPairs)
+        {
+            if (objectPair.gameObject != null)
+            {
+                objectPair.gameObject.SetActive(false);
+            }
+        }
+
+        m_prevPoseDataDictionary.Clear();
+        m_tagVisibilityStatus.Clear();
+    }
 
     public Dictionary<int, TagPose> DetectTags(bool enableSmoothing)
     {
