@@ -309,7 +309,19 @@ public class NBackTask : MonoBehaviour
             if (currentTrial < totalTrials - 1)
             {
                 lightColorSetter.TurnOff();
-                yield return new WaitForSeconds(interStimulusInterval);
+                // Wait for ISI, but check for pause during this time
+                float waited = 0;
+                while (waited < interStimulusInterval)
+                {
+                    if (isPaused)
+                    {
+                        yield return null;
+                        break; // Exit the loop if it was paused
+                    }
+
+                    yield return null;
+                    waited += Time.deltaTime;
+                }
             }
 
             currentTrial++;
