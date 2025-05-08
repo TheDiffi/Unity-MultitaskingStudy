@@ -113,10 +113,15 @@ public class CalibrationHandler : MonoBehaviour
         targeterScript.SetEnabled(true);
     }
 
-    private void TriggerCalibration(object _)
+    private void TriggerCalibration(object data)
     {
+        ParseConfigureTasks(data);
+
         if (isCalibrating) return;
         isCalibrating = true;
+
+        passthroughManager.ClearTags();
+
         var enabledTaskObjects = new List<int>();
 
         if (isPrimaryVirtual)
@@ -126,20 +131,20 @@ public class CalibrationHandler : MonoBehaviour
             enabledTaskObjects.Add(wrongBtnId);
             enabledTaskObjects.Add(nBackId);
         }
-        else if (isInterruptVirtual)
+        if (isInterruptVirtual)
         {
             // Set up interrupt virtual configurations
             enabledTaskObjects.Add(interruptBtnId);
             enabledTaskObjects.Add(interruptId);
         }
 
-        var allItemsDetected = passthroughManager.PlaceObjectsAtTags(enabledTaskObjects);
+        Debug.Log("Triggering calibration with objects: " + string.Join(", ", enabledTaskObjects));
+        var allItemsDetected = passthroughManager.PlaceObjectsAtTags(enabledTaskObjects, false);
 
         if (!allItemsDetected)
         {
-            Debug.LogError("Failed to place objects at tags. Calibration aborted.");
+            Debug.LogWarning("Failed to place all items at tags.");
             currentController.Send("calibration-failure", null);
-            isCalibrating = false;
         }
         else
         {

@@ -1,3 +1,4 @@
+using Meta.XR.ImmersiveDebugger;
 using PassthroughCameraSamples;
 using UnityEngine;
 
@@ -6,6 +7,7 @@ public class KeepInFrontOfEyes : MonoBehaviour
     [SerializeField] private WebCamTextureManager m_webCamTextureManager;
     private PassthroughCameraEye CameraEye => m_webCamTextureManager.Eye;
     [SerializeField] private GameObject targetObject;
+    [DebugMember(Tweakable = true, Min = 0.01f, Max = 1f, Category = "PassthroughCamera")]
     [SerializeField] private float m_distanceFromEyes = 0.5f;
     [SerializeField] private bool m_isEnabled = true;
 

@@ -313,12 +313,6 @@ public class NBackTask : MonoBehaviour
                 float waited = 0;
                 while (waited < interStimulusInterval)
                 {
-                    if (isPaused)
-                    {
-                        yield return null;
-                        break; // Exit the loop if it was paused
-                    }
-
                     yield return null;
                     waited += Time.deltaTime;
                 }

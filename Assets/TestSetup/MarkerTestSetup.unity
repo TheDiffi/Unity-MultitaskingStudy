@@ -8033,7 +8033,7 @@ MonoBehaviour:
   m_boundingBoxMaterial: {fileID: 2100000, guid: 5828f113fb726f64eab08340333edd86, type: 2}
   m_decimation: 4
   m_tagSize_mm: 26.5
-  m_autoplaceObjects: 1
+  m_autoplaceObjects: 0
   m_markerGameObjectPairs:
   - markerId: 0
     gameObject: {fileID: 2097231064}
@@ -17313,9 +17313,29 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 3382997451608042308, guid: 770f901bf954a914f91f541cc8c88e58, type: 3}
+      propertyPath: m_isEnabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3382997451608042308, guid: 770f901bf954a914f91f541cc8c88e58, type: 3}
+      propertyPath: m_distanceFromEyes
+      value: 0.78
+      objectReference: {fileID: 0}
+    - target: {fileID: 3382997451608042308, guid: 770f901bf954a914f91f541cc8c88e58, type: 3}
       propertyPath: m_webCamTextureManager
       value: 
       objectReference: {fileID: 2140166246}
+    - target: {fileID: 5280810824815299345, guid: 770f901bf954a914f91f541cc8c88e58, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.03
+      objectReference: {fileID: 0}
+    - target: {fileID: 5280810824815299345, guid: 770f901bf954a914f91f541cc8c88e58, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.00029999999
+      objectReference: {fileID: 0}
+    - target: {fileID: 5280810824815299345, guid: 770f901bf954a914f91f541cc8c88e58, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.03
+      objectReference: {fileID: 0}
     - target: {fileID: 6548167772904677435, guid: 770f901bf954a914f91f541cc8c88e58, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0

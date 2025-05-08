@@ -237,7 +237,7 @@ public class AprilTagPassthroughManager : MonoBehaviour
     /// <summary>
     /// Processes marker detection and updates the position of 3D objects.
     /// </summary>
-    public bool PlaceObjectsAtTags(List<int> includedIds)
+    public bool PlaceObjectsAtTags(List<int> includedIds, bool deactivateNonFound = true)
     {
         var poses = DetectTags(false);
         var allPosesDetected = false;
@@ -246,13 +246,13 @@ public class AprilTagPassthroughManager : MonoBehaviour
         {
             if (!includedIds.Contains(objectPair.markerId))
             {
-                objectPair.gameObject.SetActive(false);
+                if (deactivateNonFound) objectPair.gameObject.SetActive(false);
                 continue;
             }
 
             if (!poses.TryGetValue(objectPair.markerId, out TagPose foundPose) || objectPair == null)
             {
-                objectPair.gameObject.SetActive(false);
+                if (deactivateNonFound) objectPair.gameObject.SetActive(false);
                 allPosesDetected = false;
                 Debug.LogWarning($"[AprilTag] Tag {objectPair.markerId} not detected or object pair is null");
                 continue;
