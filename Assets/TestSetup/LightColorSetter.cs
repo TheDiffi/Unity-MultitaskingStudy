@@ -5,12 +5,8 @@ public class LightColorSetter : MonoBehaviour
 {
     [SerializeField] private Light[] lights;
     [SerializeField] private Renderer[] renderers;
-
-    // Store original colors to preserve saturation and value
     private Dictionary<Light, Color> originalLightColors = new Dictionary<Light, Color>();
     private Dictionary<Renderer, Color> originalRendererColors = new Dictionary<Renderer, Color>();
-
-    // Store original HSV values for proper brightness lerping
     private Dictionary<Light, float> originalLightValues = new Dictionary<Light, float>();
     private Dictionary<Renderer, float> originalRendererValues = new Dictionary<Renderer, float>();
 
@@ -84,6 +80,7 @@ public class LightColorSetter : MonoBehaviour
     /// <param name="newColor">The new color to set (only hue will be used)</param>
     public void SetColor(Color newColor)
     {
+        RestoreOriginalColors();
         Color.RGBToHSV(newColor, out float newHue, out _, out _);
 
         // Update lights
@@ -91,8 +88,8 @@ public class LightColorSetter : MonoBehaviour
         {
             if (light != null)
             {
-                Color currentColor = light.color;
-                Color.RGBToHSV(currentColor, out _, out float saturation, out float value);
+                Color originalColor = originalLightColors[light];
+                Color.RGBToHSV(originalColor, out _, out float saturation, out float value);
                 light.color = Color.HSVToRGB(newHue, saturation, value);
             }
         }
@@ -102,9 +99,12 @@ public class LightColorSetter : MonoBehaviour
         {
             if (renderer != null)
             {
-                Color currentColor = renderer.material.color;
-                Color.RGBToHSV(currentColor, out _, out float saturation, out float value);
-                renderer.material.color = Color.HSVToRGB(newHue, saturation, value);
+
+                Color originalColor = originalRendererColors[renderer];
+                Color.RGBToHSV(originalColor, out _, out float saturation, out float value);
+                var parsedColor = Color.HSVToRGB(newHue, saturation, value);
+                renderer.material.color = parsedColor;
+                renderer.material.SetColor("_ColorInner", Color.white);
             }
         }
     }
@@ -152,6 +152,7 @@ public class LightColorSetter : MonoBehaviour
 
                 // Apply new color with adjusted brightness
                 renderer.material.color = Color.HSVToRGB(hue, saturation, newValue);
+                renderer.material.SetColor("_ColorInner", Color.white);
             }
         }
     }
@@ -174,6 +175,7 @@ public class LightColorSetter : MonoBehaviour
             if (renderer != null)
             {
                 renderer.material.color = Color.black;
+                renderer.material.SetColor("_ColorInner", Color.black);
             }
         }
     }
@@ -196,6 +198,7 @@ public class LightColorSetter : MonoBehaviour
             if (renderer != null && originalRendererColors.ContainsKey(renderer))
             {
                 renderer.material.color = originalRendererColors[renderer];
+                renderer.material.SetColor("_ColorInner", Color.white);
             }
         }
     }

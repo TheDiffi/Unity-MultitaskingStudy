@@ -127,14 +127,14 @@ public class CalibrationHandler : MonoBehaviour
         if (isPrimaryVirtual)
         {
             // Set up primary virtual configurations
-            enabledTaskObjects.Add(correctBtnId);
-            enabledTaskObjects.Add(wrongBtnId);
+            /*   enabledTaskObjects.Add(correctBtnId);
+              enabledTaskObjects.Add(wrongBtnId); */
             enabledTaskObjects.Add(nBackId);
         }
         if (isInterruptVirtual)
         {
             // Set up interrupt virtual configurations
-            enabledTaskObjects.Add(interruptBtnId);
+            /*  enabledTaskObjects.Add(interruptBtnId); */
             enabledTaskObjects.Add(interruptId);
         }
 

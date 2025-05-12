@@ -325,12 +325,12 @@ public class NBackTask : MonoBehaviour
         currentConnector.SendNBackEvent("task-complete", "Task complete");
     }
 
-    public void OnCorrectButtonPressed()
+    public void OnCorrectButton()
     {
         HandleResponse(true);
     }
 
-    public void OnWrongButtonPressed()
+    public void OnWrongButton()
     {
         HandleResponse(false);
     }

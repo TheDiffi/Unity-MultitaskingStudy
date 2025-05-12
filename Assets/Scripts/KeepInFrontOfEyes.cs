@@ -1,11 +1,9 @@
 using Meta.XR.ImmersiveDebugger;
-using PassthroughCameraSamples;
 using UnityEngine;
 
 public class KeepInFrontOfEyes : MonoBehaviour
 {
-    [SerializeField] private WebCamTextureManager m_webCamTextureManager;
-    private PassthroughCameraEye CameraEye => m_webCamTextureManager.Eye;
+    [SerializeField] private Transform centerHMDTransform;
     [SerializeField] private GameObject targetObject;
     [DebugMember(Tweakable = true, Min = 0.01f, Max = 1f, Category = "PassthroughCamera")]
     [SerializeField] private float m_distanceFromEyes = 0.5f;
@@ -14,7 +12,7 @@ public class KeepInFrontOfEyes : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        if (m_webCamTextureManager == null)
+        if (centerHMDTransform == null)
         {
             Debug.LogError("WebCamTextureManager reference is not set!");
             enabled = false;
@@ -44,7 +42,9 @@ public class KeepInFrontOfEyes : MonoBehaviour
 
     private void UpdateCameraCanvas()
     {
-        var cameraPose = PassthroughCameraUtils.GetCameraPoseInWorld(CameraEye);
+        var cameraRotation = centerHMDTransform.rotation;
+        var cameraPosition = centerHMDTransform.position;
+        var cameraPose = new Pose(cameraPosition, cameraRotation);
         targetObject.transform.SetPositionAndRotation(
             cameraPose.position + cameraPose.rotation * Vector3.forward * m_distanceFromEyes,
             cameraPose.rotation);

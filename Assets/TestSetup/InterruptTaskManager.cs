@@ -333,7 +333,7 @@ public class InterruptTaskManager : MonoBehaviour
     }
 
     // Handle button press from UI or keyboard
-    public void HandleButtonPress()
+    public void HandleInput()
     {
         if (currentState is not GameState.InProgress and not GameState.TestMode)
         {

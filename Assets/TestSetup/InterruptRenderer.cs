@@ -266,7 +266,7 @@ public class InterruptRenderer : MonoBehaviour
         float actualTraversalTime = customTraversalTime > 0 ? customTraversalTime : traversalTimeMs;
 
         // Calculate the step time in seconds (how long it takes to move one pixel)
-        float stepTime = actualTraversalTime / 1000f / (pixelCount - 1);
+        float stepTime = actualTraversalTime / 0.5f / 1000f / (pixelCount - 1);
 
         // Calculate how many fixed updates we need to wait before moving the cursor
         // This ensures more accurate timing compared to frame-dependent timing
