@@ -18,6 +18,7 @@ MonoBehaviour:
     - AprilTagPassthroughManager
     - AnchorCalibrator
     - KeepInFrontOfEyes
+    - InterruptRenderer
   - AssemblyName: Meta.XR.ImmersiveDebugger
     DebugTypes:
     - TestSceneUsage

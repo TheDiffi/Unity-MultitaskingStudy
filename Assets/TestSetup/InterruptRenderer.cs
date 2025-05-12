@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections;
 using System.Diagnostics; // For Stopwatch
 using Debug = UnityEngine.Debug;
+using Meta.XR.ImmersiveDebugger;
 
 /// <summary>
 /// InterruptRenderer implements a physical LED-based version of the power stabilization task.
@@ -22,6 +23,10 @@ public class InterruptRenderer : MonoBehaviour
     [SerializeField] private Color redZoneColor = Color.red;
     [SerializeField] private Color greenZoneColor = Color.green;
     [SerializeField] private Color cursorColor = Color.black;
+
+
+    [DebugMember(Tweakable = true, Category = "InterruptRenderer")]
+    [SerializeField] private bool testEdges = false;
 
     // Cursor movement
     private float cursorPosition = 0f; // 0 to 1 range (normalized)
@@ -67,7 +72,15 @@ public class InterruptRenderer : MonoBehaviour
 
         // Pre-calculate and cache the zone information
         InitializeZones();
+        neoPixelStrip.TurnOffAll();
+    }
 
+    public void ResetRenderer()
+    {
+        // Reset the cursor position and stop any ongoing movement
+        StopTrial();
+        neoPixelStrip.TurnOffAll();
+        InitializeZones();
     }
 
     private void InitializeZones()
@@ -115,7 +128,18 @@ public class InterruptRenderer : MonoBehaviour
 
         // Set initial strip visualization - show the zones
         SetStripZones();
-        neoPixelStrip.TurnOffAll();
+    }
+
+    public void StartFlashing()
+    {
+        // Start flashing the strip with a rainbow effect
+        neoPixelStrip.AnimateFlashing();
+    }
+
+    public void StopFlashing()
+    {
+        // Start flashing the strip with a rainbow effect
+        neoPixelStrip.StopAnimations();
     }
 
     /// <summary>
@@ -129,6 +153,8 @@ public class InterruptRenderer : MonoBehaviour
         cursorPixelPosition = 0;
         cursorDirection = 1;
         isMoving = true;
+        neoPixelStrip.StopAnimations();
+        neoPixelStrip.TurnOffAll();
 
         Debug.Log($"[InterruptRenderer] Starting trial with traversal time: {newTraversalTimeMs}ms");
 
@@ -162,6 +188,16 @@ public class InterruptRenderer : MonoBehaviour
         Debug.Log($"[InterruptRenderer] Trial stopped");
     }
 
+    IEnumerator EndTrial()
+    {
+
+        // Wait for a short duration before stopping the trial
+        yield return new WaitForSeconds(0.3f);
+        // Clear the strip
+        neoPixelStrip.StopAnimations();
+        neoPixelStrip.TurnOffAll();
+    }
+
     /// <summary>
     /// Process a button press during a trial
     /// </summary>
@@ -186,6 +222,7 @@ public class InterruptRenderer : MonoBehaviour
 
         // Stop the trial
         StopTrial();
+        StartCoroutine(EndTrial());
 
         // Map our zone indices (0=left red, 1=green, 2=right red) to TaskManager expected values (0=left red, 2=green, 4=right red)
         int mappedZoneIndex = zoneIndex == 0 ? 0 : (zoneIndex == 1 ? 2 : 4);
@@ -212,7 +249,7 @@ public class InterruptRenderer : MonoBehaviour
     public void RunDebug()
     {
         // Use a slower traversal time for easier testing in debug mode
-        int debugTraversalTime = 1000; // 3 seconds, significantly slower for easy testing
+        int debugTraversalTime = 800; // 3 seconds, significantly slower for easy testing
 
         cursorPosition = 0f;
         cursorPixelPosition = 0;
@@ -265,23 +302,22 @@ public class InterruptRenderer : MonoBehaviour
         // Use the custom traversal time if provided, otherwise use the instance variable
         float actualTraversalTime = customTraversalTime > 0 ? customTraversalTime : traversalTimeMs;
 
-        // Calculate the step time in seconds (how long it takes to move one pixel)
-        float stepTime = actualTraversalTime / 0.5f / 1000f / (pixelCount - 1);
+        // We'll calculate the base step time once (without speedModifier)
+        float stepTime = actualTraversalTime / 1000f / pixelCount;
 
         // Calculate how many fixed updates we need to wait before moving the cursor
-        // This ensures more accurate timing compared to frame-dependent timing
         float timeAccumulator = 0f;
-
-        Debug.Log($"[InterruptRenderer] Starting cursor movement with traversal time: {actualTraversalTime}ms, step time: {stepTime * 1000}ms per pixel");
 
         while (isMoving)
         {
+
             timeAccumulator += Time.fixedDeltaTime;
 
-            // If enough time has accumulated, move the cursor
-            if (timeAccumulator >= stepTime)
+            // Move the cursor multiple times if needed based on accumulated time
+            // This allows cursor to move multiple pixels per fixed update when speedModifier is high
+            while (timeAccumulator >= stepTime && isMoving)
             {
-                // Reset accumulator, subtracting exactly the step time to maintain precision
+                // Subtract the step time from the accumulator
                 timeAccumulator -= stepTime;
 
                 // Update cursor position
@@ -293,22 +329,14 @@ public class InterruptRenderer : MonoBehaviour
                 {
                     cursorPixelPosition = pixelCount - 1;
                     cursorDirection = -1;
-
-                    // Log timestamp when reaching right edge
-                    float timeElapsed = trialStopwatch.ElapsedMilliseconds / 1000f;
-                    Debug.Log($"[InterruptRenderer] Cursor reached RIGHT edge at {timeElapsed:F3}s");
                 }
                 else if (cursorPixelPosition <= 0)
                 {
                     cursorPixelPosition = 0;
                     cursorDirection = 1;
-
-                    // Log timestamp when reaching left edge
-                    float timeElapsed = trialStopwatch.ElapsedMilliseconds / 1000f;
-                    Debug.Log($"[InterruptRenderer] Cursor reached LEFT edge at {timeElapsed:F3}s");
                 }
 
-                // Update visual representation
+                // Update visual representation after each position change
                 RenderLEDs();
             }
 
@@ -327,15 +355,23 @@ public class InterruptRenderer : MonoBehaviour
 
         // Draw cursor (3 black pixels if possible)
         if (cursorPixelPosition > 0)
+        {
             colors[cursorPixelPosition - 1] = cursorColor;
-
+        }
         colors[cursorPixelPosition] = cursorColor;
-
         if (cursorPixelPosition < pixelCount - 1)
+        {
             colors[cursorPixelPosition + 1] = cursorColor;
+        }
 
         // Update the NeoPixel strip
         neoPixelStrip.SetPixelColors(colors);
+
+        if (testEdges)
+        {
+            neoPixelStrip.SetLeftEdge(cursorPixelPosition - 1);
+            neoPixelStrip.SetRightEdge(cursorPixelPosition + 1);
+        }
     }
 
     /// <summary>

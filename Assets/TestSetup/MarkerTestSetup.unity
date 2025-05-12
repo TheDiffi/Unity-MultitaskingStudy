@@ -17222,17 +17222,9 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 3382997451608042308, guid: 770f901bf954a914f91f541cc8c88e58, type: 3}
-      propertyPath: m_isEnabled
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 3382997451608042308, guid: 770f901bf954a914f91f541cc8c88e58, type: 3}
       propertyPath: centerHMDTransform
       value: 
       objectReference: {fileID: 39573382}
-    - target: {fileID: 3382997451608042308, guid: 770f901bf954a914f91f541cc8c88e58, type: 3}
-      propertyPath: m_distanceFromEyes
-      value: 0.1
-      objectReference: {fileID: 0}
     - target: {fileID: 3382997451608042308, guid: 770f901bf954a914f91f541cc8c88e58, type: 3}
       propertyPath: m_webCamTextureManager
       value: 
@@ -17427,6 +17419,10 @@ PrefabInstance:
       propertyPath: m_LocalPosition.z
       value: -0.075
       objectReference: {fileID: 0}
+    - target: {fileID: 5824852312497829943, guid: 452819c2367096b4984e36a2b5bebff3, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 236ec328e5a3cc84abd674c2f436698e, type: 2}
     - target: {fileID: 6891251977740072328, guid: 452819c2367096b4984e36a2b5bebff3, type: 3}
       propertyPath: m_LocalPosition.z
       value: -0.12
@@ -17511,6 +17507,10 @@ PrefabInstance:
       propertyPath: m_LocalPosition.z
       value: -0.075
       objectReference: {fileID: 0}
+    - target: {fileID: 8922967836696184041, guid: 452819c2367096b4984e36a2b5bebff3, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 2d4b128ac30b4144b87d6a03bcc3306c, type: 2}
     - target: {fileID: 9043941374984659902, guid: 452819c2367096b4984e36a2b5bebff3, type: 3}
       propertyPath: m_LocalScale.y
       value: 0.03

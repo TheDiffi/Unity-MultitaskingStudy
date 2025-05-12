@@ -8,6 +8,8 @@ Shader "Custom/ThreeZoneCircularGradient"
         _MiddleRadius ("Middle Gradient Radius", Range(0,1)) = 0.7
         _StretchX ("Horizontal Stretch", Range(0.1,5)) = 1.0
         _StretchY ("Vertical Stretch", Range(0.1,5)) = 1.0
+        _OffsetX ("Horizontal Offset", Range(-0.5,0.5)) = 0.0
+        _OffsetY ("Vertical Offset", Range(-0.5,0.5)) = 0.0
         _Glossiness ("Smoothness", Range(0,1)) = 0.5
         _Metallic ("Metallic", Range(0,1)) = 0.0
         _MainTex ("Albedo (RGB)", 2D) = "white" {}
@@ -29,22 +31,25 @@ Shader "Custom/ThreeZoneCircularGradient"
         half _Glossiness;
         half _Metallic;
         fixed4 _Color;
-        fixed4 _ColorInner;  // Added this declaration
+        fixed4 _ColorInner;
         float _InnerRadius;
         float _MiddleRadius;
         float _StretchX;
         float _StretchY;
+        float _OffsetX;
+        float _OffsetY;
         // Add instancing support for this shader
         UNITY_INSTANCING_BUFFER_START(Props)
             // put more per-instance properties here
         UNITY_INSTANCING_BUFFER_END(Props)
         void surf (Input IN, inout SurfaceOutputStandard o)
         {
-            // Calculate distance from center with stretching applied
-            float2 centeredUV = IN.uv_MainTex - float2(0.5, 0.5);
+            // Calculate distance from center with offset and stretching applied
+            // 1. Center the UV coordinates (0.5, 0.5 is center)
+            // 2. Apply the offset to shift the center position
+            float2 centeredUV = IN.uv_MainTex - float2(0.5 + _OffsetX, 0.5 + _OffsetY);
            
             // Apply stretching by dividing the UV coordinates
-            // This makes the shape appear stretched in that dimension
             float2 stretchedUV = float2(centeredUV.x / _StretchX, centeredUV.y / _StretchY);
            
             // Calculate distance with the stretched coordinates
@@ -61,7 +66,6 @@ Shader "Custom/ThreeZoneCircularGradient"
             else if (distFromCenter < _MiddleRadius)
             {
                 // Middle zone: gradient from inner color to outer color
-                // Calculate normalized position within the gradient zone
                 float gradientPosition = (distFromCenter - _InnerRadius) / (_MiddleRadius - _InnerRadius);
                 finalColor = lerp(_ColorInner, _Color, gradientPosition);
             }

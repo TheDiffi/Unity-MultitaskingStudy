@@ -4,6 +4,7 @@ using System;
 using System.Diagnostics; // For high-precision timing
 using static MasterConnector;
 using Debug = UnityEngine.Debug;
+using Meta.XR.ImmersiveDebugger;
 
 /// <summary>
 /// InterruptTaskManager implements the Power Stabilization task as described in the implementation guide.
@@ -35,6 +36,8 @@ public class InterruptTaskManager : MonoBehaviour
     // Debug mode timestamp for button presses
     private Stopwatch debugStopwatch = new Stopwatch();
     private bool eventsSetup = false;
+
+
 
     private void Start()
     {
@@ -148,6 +151,9 @@ public class InterruptTaskManager : MonoBehaviour
         successCount = 0;
         trialDataList.Clear();
 
+        // Reset the renderer
+        interruptRenderer.ResetRenderer();
+
         // Use Stopwatch for precise timing
         SessionStopwatch.StartSession();
 
@@ -191,8 +197,9 @@ public class InterruptTaskManager : MonoBehaviour
         };
         currentController.SendPowerStabilizationLiveData("interrupt-triggered", interruptData);
 
-        // Start the first trial
-        StartNextTrial();
+        // Wait for user input to start the next trial
+        interruptRenderer.StartFlashing();
+        //StartNextTrial();
     }
 
     private void StartNextTrial()
@@ -373,6 +380,13 @@ public class InterruptTaskManager : MonoBehaviour
                 { "timestamp", DateTime.Now.ToString("o") }
             };
             currentController.SendPowerStabilizationLiveData("debug-button-press", debugPressData);
+        }
+
+        if (currentState == GameState.InterruptTriggered)
+        {
+            interruptRenderer.StopFlashing();
+            StartNextTrial();
+            return;
         }
 
         // Send live data for button press in regular mode

@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: InterruptLeds
+  m_Name: InterruptLedOffRight
   m_Shader: {fileID: 4800000, guid: 5557bc1b223d7784b8336d9f372605ab, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -73,7 +73,7 @@ Material:
     - _MiddleRadius: 0.719
     - _Mode: 0
     - _OcclusionStrength: 1
-    - _OffsetX: 0
+    - _OffsetX: -0.5
     - _OffsetY: 0
     - _Parallax: 0.02
     - _SmoothnessTextureChannel: 0
@@ -84,8 +84,8 @@ Material:
     - _UVSec: 0
     - _ZWrite: 1
     m_Colors:
-    - _Color: {r: 1, g: 0.34290954, b: 0.2980392, a: 1}
-    - _ColorInner: {r: 1, g: 1, b: 1, a: 1}
+    - _Color: {r: 0.16862746, g: 0.011764706, b: 0, a: 1}
+    - _ColorInner: {r: 0.93333334, g: 0.7254902, b: 0.7254902, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

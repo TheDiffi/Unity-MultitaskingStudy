@@ -87,14 +87,22 @@ public class NeoPixelStrip : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Animates the strip with a rainbow effect
-    /// </summary>
-    public void AnimateRainbow()
+    public void SetLeftEdge(int index)
     {
-        StopCurrentAnimation();
-        currentAnimation = StartCoroutine(RainbowAnimation());
+        if (index >= 0 && index < pixels.Length && pixels[index] != null)
+        {
+            pixels[index].SetEdge(true);
+        }
     }
+    
+    public void SetRightEdge(int index)
+    {
+        if (index >= 0 && index < pixels.Length && pixels[index] != null)
+        {
+            pixels[index].SetEdge(false);
+        }
+    }
+
 
     public void TurnOffAll()
     {
@@ -117,15 +125,51 @@ public class NeoPixelStrip : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Creates a color wave effect across the strip
-    /// </summary>
+
+    public void AnimateFlashing()
+    {
+        StopCurrentAnimation();
+        currentAnimation = StartCoroutine(FlashingAnimation(500f));
+    }
+
+    public void AnimateRainbow()
+    {
+        StopCurrentAnimation();
+        currentAnimation = StartCoroutine(RainbowAnimation());
+    }
+
+
     public void AnimateColorWave(Color color)
     {
         StopCurrentAnimation();
         currentAnimation = StartCoroutine(ColorWaveAnimation(color));
     }
 
+    private IEnumerator FlashingAnimation(float delay)
+    {
+        bool isOn = false;
+
+        while (true)
+        {
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                if (pixels[i] != null)
+                {
+                    if (isOn)
+                    {
+                        pixels[i].TurnOff();
+                    }
+                    else
+                    {
+                        pixels[i].SetColor(Color.red);
+                    }
+                }
+            }
+
+            isOn = !isOn;
+            yield return new WaitForSeconds(delay);
+        }
+    }
     private IEnumerator RainbowAnimation()
     {
         float hue = 0f;

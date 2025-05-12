@@ -109,6 +109,28 @@ public class LightColorSetter : MonoBehaviour
         }
     }
 
+    public void SetEdge(bool left)
+    {
+        foreach (Renderer renderer in renderers)
+        {
+            if (renderer != null)
+            {
+                if (left)
+                {
+                    renderer.material.SetFloat("_OffsetX", 0.5f);
+                    renderer.material.SetFloat("_OffsetY", 0);
+
+                }
+                else
+                {
+                    renderer.material.SetFloat("_OffsetX", -0.5f);
+                    renderer.material.SetFloat("_OffsetY", 0);
+                }
+                renderer.material.SetColor("_ColorOuter", Color.black);
+            }
+        }
+    }
+
     /// <summary>
     /// Sets the brightness of all lights and renderers as a percentage of their original brightness
     /// </summary>
@@ -199,6 +221,8 @@ public class LightColorSetter : MonoBehaviour
             {
                 renderer.material.color = originalRendererColors[renderer];
                 renderer.material.SetColor("_ColorInner", Color.white);
+                renderer.material.SetFloat("_OffsetX", 0);
+                renderer.material.SetFloat("_OffsetY", 0);
             }
         }
     }

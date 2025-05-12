@@ -6,9 +6,9 @@ public class KeepInFrontOfEyes : MonoBehaviour
     [SerializeField] private Transform centerHMDTransform;
     [SerializeField] private GameObject targetObject;
     [DebugMember(Tweakable = true, Min = 0.01f, Max = 1f, Category = "PassthroughCamera")]
-    [SerializeField] private float m_distanceFromEyes = 0.5f;
+    [SerializeField] private float m_distanceFromEyes = 0.25f;
     [DebugMember(Tweakable = true, Min = 0.01f, Max = 1f, Category = "PassthroughCamera")]
-    [SerializeField] private float m_y_offset = 0.01f;
+    [SerializeField] private float m_y_offset = 0.1f;
     [SerializeField] private bool m_isEnabled = true;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
