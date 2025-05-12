@@ -268,6 +268,41 @@ public class MasterConnector : MonoBehaviour
         }
     }
 
+    // Send live data for real-time collection
+    public void SendLiveData(TaskType task, string eventType, object data)
+    {
+        if (!IsConnected)
+        {
+            Log($"Cannot send live data '{eventType}' for task '{task}': Not connected", LogType.Warning);
+            return;
+        }
+
+        try
+        {
+            string taskString = task == TaskType.PowerStabilization ? "powerstabilization" : "nback";
+
+            JsonMessage message = new JsonMessage
+            {
+                type = "write", // Fixed type for live data collection
+                task = taskString,
+                data = new
+                {
+                    eventType,
+                    timestamp = DateTime.Now.ToString("o"),
+                    payload = data
+                }
+            };
+
+            string json = JsonConvert.SerializeObject(message);
+            currentConnector.Send(json);
+            Log($"Sent live data '{eventType}' for task '{taskString}'");
+        }
+        catch (Exception e)
+        {
+            Log($"Error sending live data: {e.Message}", LogType.Error);
+        }
+    }
+
     // Helper methods for power stabilization task
     public void RegisterPowerStabilizationHandler(string eventType, Action<object> handler)
     {
@@ -288,6 +323,18 @@ public class MasterConnector : MonoBehaviour
     public void SendNBackEvent(string eventType, object data)
     {
         Send(TaskType.NBack, eventType, data);
+    }
+
+    // Helper methods for power stabilization task live data
+    public void SendPowerStabilizationLiveData(string eventType, object data)
+    {
+        SendLiveData(TaskType.PowerStabilization, eventType, data);
+    }
+
+    // Helper methods for n-back task live data
+    public void SendNBackLiveData(string eventType, object data)
+    {
+        SendLiveData(TaskType.NBack, eventType, data);
     }
 
 

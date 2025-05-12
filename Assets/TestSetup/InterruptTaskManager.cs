@@ -155,6 +155,16 @@ public class InterruptTaskManager : MonoBehaviour
 
         // Start the interrupt task
         currentController.SendPowerStabilizationEvent("task-started", "Interrupt task started");
+
+        // Send live data for task start
+        var startData = new Dictionary<string, object> {
+            { "studyId", studyId },
+            { "sessionNumber", sessionNumber },
+            { "traversalTime", traversalTime },
+            { "trialCount", trialCount },
+            { "timestamp", DateTime.Now.ToString("o") }
+        };
+        currentController.SendPowerStabilizationLiveData("task-started", startData);
     }
 
     private void InterruptTask()
@@ -172,6 +182,14 @@ public class InterruptTaskManager : MonoBehaviour
 
         // Simulate an interrupt
         currentController.SendPowerStabilizationEvent("interrupt-triggered", "Interrupt triggered");
+
+        // Send live data for interrupt trigger
+        var interruptData = new Dictionary<string, object> {
+            { "studyId", studyId },
+            { "sessionNumber", sessionNumber },
+            { "timestamp", DateTime.Now.ToString("o") }
+        };
+        currentController.SendPowerStabilizationLiveData("interrupt-triggered", interruptData);
 
         // Start the first trial
         StartNextTrial();
@@ -245,7 +263,7 @@ public class InterruptTaskManager : MonoBehaviour
             { "successfulTrials", successCount }
         };
 
-        currentController.SendPowerStabilizationEvent("session-summary", sessionSummary);
+        currentController.SendPowerStabilizationEvent("session-summary", JsonUtility.ToJson(sessionSummary));
         currentController.SendPowerStabilizationEvent("data-complete", "Data transfer complete");
     }
 
@@ -317,6 +335,9 @@ public class InterruptTaskManager : MonoBehaviour
 
         currentController.SendPowerStabilizationEvent("trial-complete", trialData.ToString());
 
+        // Send live data for trial completion
+        currentController.SendPowerStabilizationLiveData("trial-complete", trialData);
+
         if (currentState == GameState.TestMode)
         {
             return;
@@ -345,6 +366,26 @@ public class InterruptTaskManager : MonoBehaviour
             double elapsed = debugStopwatch.Elapsed.TotalSeconds;
             Debug.Log($"DEBUG MODE: Button pressed at {elapsed:F3}s since debug start");
             currentController.SendPowerStabilizationEvent("debug-button-press", elapsed.ToString("F3"));
+
+            // Send live data for debug button press
+            var debugPressData = new Dictionary<string, object> {
+                { "elapsedTime", elapsed },
+                { "timestamp", DateTime.Now.ToString("o") }
+            };
+            currentController.SendPowerStabilizationLiveData("debug-button-press", debugPressData);
+        }
+
+        // Send live data for button press in regular mode
+        if (currentState is GameState.InProgress)
+        {
+            var inputData = new Dictionary<string, object> {
+                { "studyId", studyId },
+                { "sessionNumber", sessionNumber },
+                { "currentTrial", currentTrial + 1 },
+                { "elapsedMilliseconds", SessionStopwatch.get.ElapsedMilliseconds },
+                { "timestamp", DateTime.Now.ToString("o") }
+            };
+            currentController.SendPowerStabilizationLiveData("input-registered", inputData);
         }
 
         if (interruptRenderer != null)

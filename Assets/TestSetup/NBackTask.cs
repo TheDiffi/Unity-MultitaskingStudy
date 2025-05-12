@@ -84,6 +84,18 @@ public class NBackTask : MonoBehaviour
         currentTrial = 0;
         SessionStopwatch.StartSession();
         trialCoroutine = StartCoroutine(RunTrials());
+
+        // Send live data for task start
+        var startData = new Dictionary<string, object> {
+            { "studyId", studyId },
+            { "sessionNumber", sessionNumber },
+            { "nBackLevel", nBackLevel },
+            { "totalTrials", totalTrials },
+            { "stimulusDuration", stimulusDuration * 1000 }, // Convert back to ms for consistency
+            { "interStimulusInterval", interStimulusInterval * 1000 }, // Convert back to ms for consistency
+            { "timestamp", DateTime.Now.ToString("o") }
+        };
+        currentConnector.SendNBackLiveData("session-started", startData);
     }
 
     void PauseTask()
@@ -91,6 +103,16 @@ public class NBackTask : MonoBehaviour
         Debug.Log("Pausing NBack task");
         isPaused = !isPaused;
         Debug.Log($"Task paused: {isPaused}");
+
+        // Send live data for pause/resume event
+        var pauseData = new Dictionary<string, object> {
+            { "studyId", studyId },
+            { "sessionNumber", sessionNumber },
+            { "isPaused", isPaused },
+            { "currentTrial", currentTrial },
+            { "sessionTime", SessionStopwatch.get.ElapsedMilliseconds / 1000.0 } // session time in seconds
+        };
+        currentConnector.SendNBackLiveData("session-pause-state-changed", pauseData);
         currentConnector.SendNBackEvent("task-paused", isPaused ? "Task paused" : "Task resumed");
     }
 
@@ -98,6 +120,16 @@ public class NBackTask : MonoBehaviour
     {
         Debug.Log("Resuming NBack task");
         isPaused = false;
+
+        // Send live data for resume event
+        var resumeData = new Dictionary<string, object> {
+            { "studyId", studyId },
+            { "sessionNumber", sessionNumber },
+            { "isPaused", false },
+            { "currentTrial", currentTrial },
+            { "sessionTime", SessionStopwatch.get.ElapsedMilliseconds / 1000.0 } // session time in seconds
+        };
+        currentConnector.SendNBackLiveData("session-pause-state-changed", resumeData);
         currentConnector.SendNBackEvent("task-resumed", "Task resumed");
     }
 
@@ -342,6 +374,14 @@ public class NBackTask : MonoBehaviour
         {
             string buttonType = isConfirm ? "Correct" : "Wrong";
             Debug.Log($"Debug mode: {buttonType} button pressed");
+
+            // Send live data for debug mode button press
+            var debugPressData = new Dictionary<string, object> {
+                { "buttonType", buttonType },
+                { "timestamp", DateTime.Now.ToString("o") }
+            };
+            currentConnector.SendNBackLiveData("debug-button-press", debugPressData);
+
             currentConnector.SendNBackEvent("debug-button-press", buttonType);
             return;
         }
@@ -371,7 +411,10 @@ public class NBackTask : MonoBehaviour
         currentConnector.SendNBackEvent("trial-complete", result);
 
         // Record the trial data with the actual end time
-        RecordTrial(isConfirm, reactionTimeMs, responseTimeMs, stimulusEndTimeMs, result);
+        NbackTrialData trialData = RecordTrial(isConfirm, reactionTimeMs, responseTimeMs, stimulusEndTimeMs, result);
+
+        // Send live data for button press - including full trial data for resilience
+        currentConnector.SendNBackLiveData("trial-complete", trialData);
 
         // Mark that we've received the response
         awaitingResponse = false;
@@ -384,15 +427,14 @@ public class NBackTask : MonoBehaviour
         lightColorSetter.TurnOff();
     }
 
-    void RecordTrial(bool response, int reactionTimeMs, long responseTimeMs, long stimulusEndTimeMs, string result)
+    NbackTrialData RecordTrial(bool response, int reactionTimeMs, long responseTimeMs, long stimulusEndTimeMs, string result)
     {
         // Convert elapsed times to local date time for reference (optional)
         DateTime stimulusOnsetLocalTime = SessionStopwatch.ElapsedToLocalTime(trialOnsetTimes[currentTrial]);
         DateTime responseLocalTime = SessionStopwatch.ElapsedToLocalTime(responseTimeMs);
         DateTime stimulusEndLocalTime = SessionStopwatch.ElapsedToLocalTime(stimulusEndTimeMs);
 
-
-        trialDataList.Add(new NbackTrialData
+        NbackTrialData trialData = new NbackTrialData
         {
             study_id = studyId,
             session_number = sessionNumber,
@@ -407,7 +449,10 @@ public class NBackTask : MonoBehaviour
             response_time = responseLocalTime.ToString("o"),
             reaction_time = reactionTimeMs,
             stimulus_end_time = stimulusEndLocalTime.ToString("o")
-        });
+        };
+
+        trialDataList.Add(trialData);
+        return trialData;
     }
 
     void ExitTask()
