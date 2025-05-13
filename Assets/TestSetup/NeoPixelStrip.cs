@@ -19,7 +19,7 @@ public class NeoPixelStrip : MonoBehaviour
     public void InitializePixels()
     {
         // Find all LightColorSetter components in children
-        LightColorSetter[] foundPixels = GetComponentsInChildren<LightColorSetter>();
+        LightColorSetter[] foundPixels = GetComponentsInChildren<LightColorSetter>(true);
 
         // Validate that we have the expected number of pixels
         if (PixelCount > 0 && foundPixels.Length != PixelCount)
@@ -45,7 +45,7 @@ public class NeoPixelStrip : MonoBehaviour
         {
             if (pixels[i] != null)
             {
-                pixels[i].SetColor(color);
+                pixels[i].SetHue(color);
             }
         }
     }
@@ -70,7 +70,7 @@ public class NeoPixelStrip : MonoBehaviour
                 }
                 else
                 {
-                    pixels[i].SetColor(colors[i]);
+                    pixels[i].SetHue(colors[i]);
                 }
             }
         }
@@ -83,7 +83,7 @@ public class NeoPixelStrip : MonoBehaviour
     {
         if (index >= 0 && index < pixels.Length && pixels[index] != null)
         {
-            pixels[index].SetColor(color);
+            pixels[index].SetHue(color);
         }
     }
 
@@ -94,7 +94,7 @@ public class NeoPixelStrip : MonoBehaviour
             pixels[index].SetEdge(true);
         }
     }
-    
+
     public void SetRightEdge(int index)
     {
         if (index >= 0 && index < pixels.Length && pixels[index] != null)
@@ -161,13 +161,13 @@ public class NeoPixelStrip : MonoBehaviour
                     }
                     else
                     {
-                        pixels[i].SetColor(Color.red);
+                        pixels[i].SetHue(Color.red);
                     }
                 }
             }
 
             isOn = !isOn;
-            yield return new WaitForSeconds(delay);
+            yield return new WaitForSeconds(delay / 1000f);
         }
     }
     private IEnumerator RainbowAnimation()
@@ -183,7 +183,7 @@ public class NeoPixelStrip : MonoBehaviour
                     // Calculate hue offset based on position in strip
                     float pixelHue = (hue + i / (float)pixels.Length) % 1.0f;
                     Color pixelColor = Color.HSVToRGB(pixelHue, 1.0f, 1.0f);
-                    pixels[i].SetColor(pixelColor);
+                    pixels[i].SetHue(pixelColor);
                 }
             }
 
@@ -209,7 +209,7 @@ public class NeoPixelStrip : MonoBehaviour
                     float wave = Mathf.Abs(Mathf.Sin(i / (float)pixels.Length * Mathf.PI * 2 + offset));
                     // Apply the wave to the value component
                     Color pixelColor = Color.HSVToRGB(baseHue, baseSaturation, baseValue * wave);
-                    pixels[i].SetColor(pixelColor);
+                    pixels[i].SetHue(pixelColor);
                 }
             }
 

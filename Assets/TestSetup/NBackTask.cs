@@ -59,6 +59,7 @@ public class NBackTask : MonoBehaviour
             currentConnector.RegisterNBackHandler("exit", _ => ExitTask());
             currentConnector.RegisterNBackHandler("get-data", _ => GetData());
             currentConnector.RegisterNBackHandler("configure", (data) => ConfigureTask(data));
+            currentConnector.RegisterNBackHandler("reset", _ => ResetTask());
             eventsSetup = true;
         }
 
@@ -171,7 +172,7 @@ public class NBackTask : MonoBehaviour
         while (inDebugMode)
         {
             // Cycle through available colors
-            lightColorSetter.SetColor(colors[colorIndex]);
+            lightColorSetter.SetHue(colors[colorIndex]);
 
             // Log the current color in debug mode
             Debug.Log($"Debug mode color: {GetColorNameFromIndex(colorIndex)}");
@@ -206,6 +207,8 @@ public class NBackTask : MonoBehaviour
         Debug.Log("Configuring NBack task with data: " + (data != null ? data.ToString() : "null"));
         try
         {
+            lightColorSetter.TurnOff();
+
             Dictionary<string, object> paramsDict = null;
 
             // The data is a JObject, so convert it to a dictionary
@@ -323,7 +326,7 @@ public class NBackTask : MonoBehaviour
             long stimulusOnsetTime = SessionStopwatch.get.ElapsedMilliseconds;
 
             // Show the stimulus color
-            lightColorSetter.SetColor(colors[colorSequence[currentTrial]]);
+            lightColorSetter.SetHue(colors[colorSequence[currentTrial]]);
             trialStartTime = Time.time;
             awaitingResponse = true;
 
@@ -422,7 +425,7 @@ public class NBackTask : MonoBehaviour
 
     IEnumerator FeedbackFlash()
     {
-        lightColorSetter.SetColor(Color.white);
+        lightColorSetter.SetHue(Color.white);
         yield return new WaitForSeconds(feedbackDuration);
         lightColorSetter.TurnOff();
     }
@@ -462,6 +465,17 @@ public class NBackTask : MonoBehaviour
             StopCoroutine(trialCoroutine);
         lightColorSetter.TurnOff();
         trialDataList.Clear();
+    }
+
+    void ResetTask()
+    {
+        Debug.Log("Resetting NBack task");
+        if (trialCoroutine != null)
+            StopCoroutine(trialCoroutine);
+        lightColorSetter.TurnOff();
+        trialDataList.Clear();
+        currentTrial = 0;
+        SessionStopwatch.StopSession();
     }
 
     void GetData()

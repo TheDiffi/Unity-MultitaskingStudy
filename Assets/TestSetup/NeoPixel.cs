@@ -47,7 +47,7 @@ public class NeoPixel : MonoBehaviour
     }
 
     // Public method to set the color by changing only the hue
-    public void SetColor(Color newColor)
+    public void SetHue(Color newColor)
     {
         Color.RGBToHSV(newColor, out var newH, out _, out _);
 

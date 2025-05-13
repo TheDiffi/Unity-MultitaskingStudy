@@ -18,8 +18,8 @@ public class CalibrationHandler : MonoBehaviour
     private bool isCalibrating = false;
     private bool targeterEnabled = false;
 
-    private bool isPrimaryVirtual = false;
-    private bool isInterruptVirtual = false;
+    private bool isPrimaryVirtual = true;
+    private bool isInterruptVirtual = true;
 
     private int correctBtnId = 0;
     private int wrongBtnId = 1;
@@ -105,12 +105,22 @@ public class CalibrationHandler : MonoBehaviour
         }
     }
 
+    public void EnableTargeter()
+    {
+        EnableTargeter(null);
+    }
+
     private void EnableTargeter(object _)
     {
         //ignore data
         if (targeterEnabled) return;
         targeterEnabled = true;
         targeterScript.SetEnabled(true);
+    }
+
+    public void TriggerCalibration()
+    {
+        TriggerCalibration(null);
     }
 
     private void TriggerCalibration(object data)

@@ -5,6 +5,8 @@ public class LightColorSetter : MonoBehaviour
 {
     [SerializeField] private Light[] lights;
     [SerializeField] private Renderer[] renderers;
+
+    private Color turnedOffColor = new Color32(227, 227, 227, 255);
     private Dictionary<Light, Color> originalLightColors = new Dictionary<Light, Color>();
     private Dictionary<Renderer, Color> originalRendererColors = new Dictionary<Renderer, Color>();
     private Dictionary<Light, float> originalLightValues = new Dictionary<Light, float>();
@@ -78,7 +80,7 @@ public class LightColorSetter : MonoBehaviour
     /// Sets the color of all lights and renderers, changing only the hue while preserving saturation and value
     /// </summary>
     /// <param name="newColor">The new color to set (only hue will be used)</param>
-    public void SetColor(Color newColor)
+    public void SetHue(Color newColor)
     {
         RestoreOriginalColors();
         Color.RGBToHSV(newColor, out float newHue, out _, out _);
@@ -126,7 +128,7 @@ public class LightColorSetter : MonoBehaviour
                     renderer.material.SetFloat("_OffsetX", -0.5f);
                     renderer.material.SetFloat("_OffsetY", 0);
                 }
-                renderer.material.SetColor("_ColorOuter", Color.black);
+                renderer.material.SetColor("_ColorOuter", turnedOffColor);
             }
         }
     }
@@ -196,8 +198,28 @@ public class LightColorSetter : MonoBehaviour
         {
             if (renderer != null)
             {
-                renderer.material.color = Color.black;
-                renderer.material.SetColor("_ColorInner", Color.black);
+                renderer.material.color = turnedOffColor;
+                renderer.material.SetColor("_ColorInner", turnedOffColor);
+            }
+        }
+    }
+
+    public void TurnOn()
+    {
+        foreach (Light light in lights)
+        {
+            if (light != null)
+            {
+                light.color = originalLightColors[light];
+            }
+        }
+
+        foreach (Renderer renderer in renderers)
+        {
+            if (renderer != null)
+            {
+                renderer.material.color = originalRendererColors[renderer];
+                renderer.material.SetColor("_ColorInner", Color.white);
             }
         }
     }

@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics; // For Stopwatch
 using Debug = UnityEngine.Debug;
 using Meta.XR.ImmersiveDebugger;
@@ -12,8 +13,8 @@ using Meta.XR.ImmersiveDebugger;
 public class InterruptRenderer : MonoBehaviour
 {
     [Header("Hardware References")]
-    [SerializeField] private NeoPixelStrip neoPixelStrip;
-    [SerializeField] private int pixelCount => neoPixelStrip.PixelCount;
+    [SerializeField] private List<NeoPixelStrip> neoPixelStrips = new List<NeoPixelStrip>();
+    [SerializeField] private int pixelCount => neoPixelStrips.Count > 0 ? neoPixelStrips[0].PixelCount : 0;
 
     [Header("Zone Configuration")]
     [SerializeField] private float redZoneWidth = 0.4f; // 40% on each side
@@ -58,29 +59,40 @@ public class InterruptRenderer : MonoBehaviour
             }
         }
 
-        // Validate the NeoPixel strip
-        if (neoPixelStrip == null)
+        // Find all NeoPixelStrip components on child objects if not manually assigned
+        if (neoPixelStrips.Count == 0)
         {
-            Debug.LogError("NeoPixelStrip component is not assigned!");
+            neoPixelStrips.AddRange(GetComponentsInChildren<NeoPixelStrip>());
+        }
+
+        // Validate the NeoPixel strips
+        if (neoPixelStrips.Count == 0)
+        {
+            Debug.LogError("No NeoPixelStrip components found in children!");
             return;
         }
 
-        neoPixelStrip.InitializePixels();
+        // Initialize all strips
+        foreach (var strip in neoPixelStrips)
+        {
+            strip.InitializePixels();
+        }
 
         // Initialize cursor position
         cursorPosition = 0f;
 
         // Pre-calculate and cache the zone information
         InitializeZones();
-        neoPixelStrip.TurnOffAll();
+        TurnOffAllStrips();
     }
 
     public void ResetRenderer()
     {
         // Reset the cursor position and stop any ongoing movement
+        TurnOffAllStrips();
         StopTrial();
-        neoPixelStrip.TurnOffAll();
         InitializeZones();
+        TurnOffAllStrips();
     }
 
     private void InitializeZones()
@@ -132,14 +144,20 @@ public class InterruptRenderer : MonoBehaviour
 
     public void StartFlashing()
     {
-        // Start flashing the strip with a rainbow effect
-        neoPixelStrip.AnimateFlashing();
+        // Start flashing all strips with a rainbow effect
+        foreach (var strip in neoPixelStrips)
+        {
+            strip.AnimateFlashing();
+        }
     }
 
     public void StopFlashing()
     {
-        // Start flashing the strip with a rainbow effect
-        neoPixelStrip.StopAnimations();
+        // Stop flashing on all strips
+        foreach (var strip in neoPixelStrips)
+        {
+            strip.StopAnimations();
+        }
     }
 
     /// <summary>
@@ -153,8 +171,13 @@ public class InterruptRenderer : MonoBehaviour
         cursorPixelPosition = 0;
         cursorDirection = 1;
         isMoving = true;
-        neoPixelStrip.StopAnimations();
-        neoPixelStrip.TurnOffAll();
+
+        // Stop any animations on all strips
+        foreach (var strip in neoPixelStrips)
+        {
+            strip.StopAnimations();
+            strip.TurnOffAll();
+        }
 
         Debug.Log($"[InterruptRenderer] Starting trial with traversal time: {newTraversalTimeMs}ms");
 
@@ -190,12 +213,14 @@ public class InterruptRenderer : MonoBehaviour
 
     IEnumerator EndTrial()
     {
-
         // Wait for a short duration before stopping the trial
         yield return new WaitForSeconds(0.3f);
-        // Clear the strip
-        neoPixelStrip.StopAnimations();
-        neoPixelStrip.TurnOffAll();
+        // Clear all strips
+        foreach (var strip in neoPixelStrips)
+        {
+            strip.StopAnimations();
+            strip.TurnOffAll();
+        }
     }
 
     /// <summary>
@@ -288,8 +313,11 @@ public class InterruptRenderer : MonoBehaviour
             movementCoroutine = null;
         }
 
-        // Clear the strip
-        neoPixelStrip.StopAnimations();
+        // Clear all strips
+        foreach (var strip in neoPixelStrips)
+        {
+            strip.StopAnimations();
+        }
 
         Debug.Log($"[InterruptRenderer] DEBUG mode stopped");
     }
@@ -310,7 +338,6 @@ public class InterruptRenderer : MonoBehaviour
 
         while (isMoving)
         {
-
             timeAccumulator += Time.fixedDeltaTime;
 
             // Move the cursor multiple times if needed based on accumulated time
@@ -346,7 +373,18 @@ public class InterruptRenderer : MonoBehaviour
     }
 
     /// <summary>
-    /// Render the zones and cursor position on the NeoPixel strip
+    /// Turn off all LED strips
+    /// </summary>
+    private void TurnOffAllStrips()
+    {
+        foreach (var strip in neoPixelStrips)
+        {
+            strip.TurnOffAll();
+        }
+    }
+
+    /// <summary>
+    /// Render the zones and cursor position on all NeoPixel strips
     /// </summary>
     private void RenderLEDs()
     {
@@ -364,22 +402,28 @@ public class InterruptRenderer : MonoBehaviour
             colors[cursorPixelPosition + 1] = cursorColor;
         }
 
-        // Update the NeoPixel strip
-        neoPixelStrip.SetPixelColors(colors);
-
-        if (testEdges)
+        // Update all NeoPixel strips with the same pattern
+        foreach (var strip in neoPixelStrips)
         {
-            neoPixelStrip.SetLeftEdge(cursorPixelPosition - 1);
-            neoPixelStrip.SetRightEdge(cursorPixelPosition + 1);
+            strip.SetPixelColors(colors);
+
+            if (testEdges)
+            {
+                strip.SetLeftEdge(cursorPixelPosition - 1);
+                strip.SetRightEdge(cursorPixelPosition + 1);
+            }
         }
     }
 
     /// <summary>
-    /// Display just the zone colors on the strip without cursor
+    /// Display just the zone colors on all strips without cursor
     /// </summary>
     private void SetStripZones()
     {
-        neoPixelStrip.SetPixelColors(zoneColors);
+        foreach (var strip in neoPixelStrips)
+        {
+            strip.SetPixelColors(zoneColors);
+        }
     }
 
     // When the zone configuration changes in the editor, we need to recalculate zones

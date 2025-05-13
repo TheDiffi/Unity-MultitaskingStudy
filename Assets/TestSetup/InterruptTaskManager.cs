@@ -67,6 +67,7 @@ public class InterruptTaskManager : MonoBehaviour
         currentController.RegisterPowerStabilizationHandler("get-data", _ => GetData());
         currentController.RegisterPowerStabilizationHandler("debug", _ => DebugMode());
         currentController.RegisterPowerStabilizationHandler("exit-debug", _ => ExitDebugMode());
+        currentController.RegisterPowerStabilizationHandler("reset", _ => ResetTask());
     }
 
     private void OnDisable()
@@ -85,6 +86,7 @@ public class InterruptTaskManager : MonoBehaviour
     private void ConfigureTask(object data)
     {
         Debug.Log("Configuration received: " + data.ToString());
+        interruptRenderer.ResetRenderer();
 
         try
         {
@@ -363,7 +365,7 @@ public class InterruptTaskManager : MonoBehaviour
     // Handle button press from UI or keyboard
     public void HandleInput()
     {
-        if (currentState is not GameState.InProgress and not GameState.TestMode)
+        if (currentState is not GameState.InProgress and not GameState.TestMode and not GameState.InterruptTriggered)
         {
             Debug.LogWarning("Button pressed but task not in progress or test mode");
             return;
@@ -419,6 +421,18 @@ public class InterruptTaskManager : MonoBehaviour
         if (successRate >= 0.6f) return "Good";
         if (successRate >= 0.4f) return "Mediocre";
         return "Poor";
+    }
+
+    private void ResetTask()
+    {
+        Debug.Log("Resetting task...");
+        currentState = GameState.Idle;
+        currentTrial = 0;
+        successCount = 0;
+        trialDataList.Clear();
+        interruptRenderer.ResetRenderer();
+        SessionStopwatch.StopSession();
+        currentController.SendPowerStabilizationEvent("task-reset", "Task reset");
     }
 
     // Data structure for trial results
