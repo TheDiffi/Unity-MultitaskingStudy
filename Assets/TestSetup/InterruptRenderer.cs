@@ -21,13 +21,12 @@ public class InterruptRenderer : MonoBehaviour
     [SerializeField] private float greenZoneWidth = 0.2f; // 20% in the center
 
     [Header("Colors")]
-    [SerializeField] private Color redZoneColor = Color.red;
-    [SerializeField] private Color greenZoneColor = Color.green;
+    [SerializeField] private Color redZoneColor = new Color(0f, 1f, 0.5f, 1f);
+    [SerializeField] private Color greenZoneColor = new Color(0.7860662f, 1f, 0.7860662f, 1f);
     [SerializeField] private Color cursorColor = Color.black;
 
 
     [DebugMember(Tweakable = true, Category = "InterruptRenderer")]
-    [SerializeField] private bool testEdges = false;
 
     // Cursor movement
     private float cursorPosition = 0f; // 0 to 1 range (normalized)
@@ -331,7 +330,7 @@ public class InterruptRenderer : MonoBehaviour
         float actualTraversalTime = customTraversalTime > 0 ? customTraversalTime : traversalTimeMs;
 
         // We'll calculate the base step time once (without speedModifier)
-        float stepTime = actualTraversalTime / 1000f / pixelCount;
+        float stepTime = actualTraversalTime / 1000f / (pixelCount * 2);
 
         // Calculate how many fixed updates we need to wait before moving the cursor
         float timeAccumulator = 0f;
@@ -406,12 +405,6 @@ public class InterruptRenderer : MonoBehaviour
         foreach (var strip in neoPixelStrips)
         {
             strip.SetPixelColors(colors);
-
-            if (testEdges)
-            {
-                strip.SetLeftEdge(cursorPixelPosition - 1);
-                strip.SetRightEdge(cursorPixelPosition + 1);
-            }
         }
     }
 

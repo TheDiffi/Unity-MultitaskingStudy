@@ -6,9 +6,10 @@ public class LightColorSetter : MonoBehaviour
     [SerializeField] private Light[] lights;
     [SerializeField] private Renderer[] renderers;
 
-    private Color turnedOffColor = new Color32(227, 227, 227, 255);
+    private Color turnedOffColor = new Color(0.7f, 0.7f, 0.7f, 255);
     private Dictionary<Light, Color> originalLightColors = new Dictionary<Light, Color>();
     private Dictionary<Renderer, Color> originalRendererColors = new Dictionary<Renderer, Color>();
+    private Dictionary<Renderer, Color> originalRendererInnerColors = new Dictionary<Renderer, Color>();
     private Dictionary<Light, float> originalLightValues = new Dictionary<Light, float>();
     private Dictionary<Renderer, float> originalRendererValues = new Dictionary<Renderer, float>();
 
@@ -72,6 +73,17 @@ public class LightColorSetter : MonoBehaviour
                 // Store original value component (brightness)
                 Color.RGBToHSV(renderer.material.color, out _, out _, out float value);
                 originalRendererValues[renderer] = value;
+
+                // Store original inner color
+                if (renderer.material.HasProperty("_ColorInner"))
+                {
+                    originalRendererInnerColors[renderer] = renderer.material.GetColor("_ColorInner");
+                }
+                else
+                {
+                    // Default to white if property doesn't exist
+                    originalRendererInnerColors[renderer] = Color.white;
+                }
             }
         }
     }
@@ -106,7 +118,12 @@ public class LightColorSetter : MonoBehaviour
                 Color.RGBToHSV(originalColor, out _, out float saturation, out float value);
                 var parsedColor = Color.HSVToRGB(newHue, saturation, value);
                 renderer.material.color = parsedColor;
-                renderer.material.SetColor("_ColorInner", Color.white);
+
+                // Apply the same hue transformation to inner color
+                Color originalInnerColor = originalRendererInnerColors[renderer];
+                Color.RGBToHSV(originalInnerColor, out _, out float innerSaturation, out float innerValue);
+                var parsedInnerColor = Color.HSVToRGB(newHue, innerSaturation, innerValue);
+                renderer.material.SetColor("_ColorInner", parsedInnerColor);
             }
         }
     }
@@ -176,7 +193,15 @@ public class LightColorSetter : MonoBehaviour
 
                 // Apply new color with adjusted brightness
                 renderer.material.color = Color.HSVToRGB(hue, saturation, newValue);
-                renderer.material.SetColor("_ColorInner", Color.white);
+
+                // Apply brightness adjustment to inner color as well
+                if (originalRendererInnerColors.ContainsKey(renderer))
+                {
+                    Color innerColor = originalRendererInnerColors[renderer];
+                    Color.RGBToHSV(innerColor, out float innerHue, out float innerSaturation, out float innerValue);
+                    float newInnerValue = Mathf.Lerp(0f, innerValue, t);
+                    renderer.material.SetColor("_ColorInner", Color.HSVToRGB(innerHue, innerSaturation, newInnerValue));
+                }
             }
         }
     }
@@ -184,7 +209,13 @@ public class LightColorSetter : MonoBehaviour
     /// <summary>
     /// Turns off all lights and makes renderers black
     /// </summary>
-    public void TurnOff()
+    public void TurnDarker()
+    {
+        var color = new Color(0.5f, 0.5f, 0.5f, 255);
+        TurnOff(color);
+    }
+    public void TurnOff() { TurnOff(turnedOffColor); }
+    public void TurnOff(Color turnOffColor)
     {
         foreach (Light light in lights)
         {
@@ -198,8 +229,8 @@ public class LightColorSetter : MonoBehaviour
         {
             if (renderer != null)
             {
-                renderer.material.color = turnedOffColor;
-                renderer.material.SetColor("_ColorInner", turnedOffColor);
+                renderer.material.color = turnOffColor;
+                renderer.material.SetColor("_ColorInner", turnOffColor);
             }
         }
     }
@@ -219,7 +250,7 @@ public class LightColorSetter : MonoBehaviour
             if (renderer != null)
             {
                 renderer.material.color = originalRendererColors[renderer];
-                renderer.material.SetColor("_ColorInner", Color.white);
+                renderer.material.SetColor("_ColorInner", originalRendererInnerColors[renderer]);
             }
         }
     }
@@ -242,7 +273,7 @@ public class LightColorSetter : MonoBehaviour
             if (renderer != null && originalRendererColors.ContainsKey(renderer))
             {
                 renderer.material.color = originalRendererColors[renderer];
-                renderer.material.SetColor("_ColorInner", Color.white);
+                renderer.material.SetColor("_ColorInner", originalRendererInnerColors[renderer]);
                 renderer.material.SetFloat("_OffsetX", 0);
                 renderer.material.SetFloat("_OffsetY", 0);
             }

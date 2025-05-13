@@ -21,7 +21,7 @@ public class NBackTask : MonoBehaviour
     [SerializeField]
     private MasterConnector currentConnector;
 
-    private Color[] colors = { Color.red, Color.green, Color.blue, Color.yellow, Color.magenta, Color.white };
+    private Color[] colors = { Color.red, new Color(0f, 1f, 0.35f, 0f), Color.blue, Color.yellow, Color.magenta, Color.white };
     private int currentTrial = 0;
     private int sessionNumber = -1;
     private string studyId = "NOCONF";

@@ -13,11 +13,13 @@ public class NeoPixelStrip : MonoBehaviour
 
     void Start()
     {
+        Debug.Log("NeoPixelStrip: Start called");
         InitializePixels();
     }
 
     public void InitializePixels()
     {
+        Debug.Log("NeoPixelStrip: InitializePixels called");
         // Find all LightColorSetter components in children
         LightColorSetter[] foundPixels = GetComponentsInChildren<LightColorSetter>(true);
 
@@ -26,6 +28,7 @@ public class NeoPixelStrip : MonoBehaviour
         {
             Debug.LogWarning($"NeoPixelStrip expected {PixelCount} pixels but found {foundPixels.Length}");
         }
+
 
         // Set the actual pixel count to what we found
         PixelCount = foundPixels.Length;
@@ -39,6 +42,7 @@ public class NeoPixelStrip : MonoBehaviour
     /// </summary>
     public void SetStripColor(Color color)
     {
+        Debug.Log($"NeoPixelStrip: SetStripColor called with color {color}");
         StopCurrentAnimation();
 
         for (int i = 0; i < pixels.Length; i++)
@@ -55,6 +59,7 @@ public class NeoPixelStrip : MonoBehaviour
     /// </summary>
     public void SetPixelColors(Color[] colors)
     {
+        Debug.Log($"NeoPixelStrip: SetPixelColors called with {colors.Length} colors");
         StopCurrentAnimation();
 
         int count = Mathf.Min(colors.Length, pixels.Length);
@@ -66,7 +71,7 @@ public class NeoPixelStrip : MonoBehaviour
                 //if black, turn off the pixel
                 if (colors[i] == Color.black)
                 {
-                    pixels[i].TurnOff();
+                    pixels[i].TurnDarker();
                 }
                 else
                 {
@@ -81,31 +86,17 @@ public class NeoPixelStrip : MonoBehaviour
     /// </summary>
     public void SetPixelColor(int index, Color color)
     {
+        Debug.Log($"NeoPixelStrip: SetPixelColor called for index {index} with color {color}");
         if (index >= 0 && index < pixels.Length && pixels[index] != null)
         {
             pixels[index].SetHue(color);
         }
     }
 
-    public void SetLeftEdge(int index)
-    {
-        if (index >= 0 && index < pixels.Length && pixels[index] != null)
-        {
-            pixels[index].SetEdge(true);
-        }
-    }
-
-    public void SetRightEdge(int index)
-    {
-        if (index >= 0 && index < pixels.Length && pixels[index] != null)
-        {
-            pixels[index].SetEdge(false);
-        }
-    }
-
 
     public void TurnOffAll()
     {
+        Debug.Log("NeoPixelStrip: TurnOffAll called");
         StopCurrentAnimation();
 
         for (int i = 0; i < pixels.Length; i++)
@@ -119,6 +110,7 @@ public class NeoPixelStrip : MonoBehaviour
 
     public void TurnOffPixel(int index)
     {
+        Debug.Log($"NeoPixelStrip: TurnOffPixel called for index {index}");
         if (index >= 0 && index < pixels.Length && pixels[index] != null)
         {
             pixels[index].TurnOff();
@@ -128,12 +120,14 @@ public class NeoPixelStrip : MonoBehaviour
 
     public void AnimateFlashing()
     {
+        Debug.Log("NeoPixelStrip: AnimateFlashing called");
         StopCurrentAnimation();
         currentAnimation = StartCoroutine(FlashingAnimation(500f));
     }
 
     public void AnimateRainbow()
     {
+        Debug.Log("NeoPixelStrip: AnimateRainbow called");
         StopCurrentAnimation();
         currentAnimation = StartCoroutine(RainbowAnimation());
     }
@@ -141,12 +135,14 @@ public class NeoPixelStrip : MonoBehaviour
 
     public void AnimateColorWave(Color color)
     {
+        Debug.Log($"NeoPixelStrip: AnimateColorWave called with color {color}");
         StopCurrentAnimation();
         currentAnimation = StartCoroutine(ColorWaveAnimation(color));
     }
 
     private IEnumerator FlashingAnimation(float delay)
     {
+        Debug.Log($"NeoPixelStrip: FlashingAnimation started with delay {delay}ms");
         bool isOn = false;
 
         while (true)
@@ -170,8 +166,10 @@ public class NeoPixelStrip : MonoBehaviour
             yield return new WaitForSeconds(delay / 1000f);
         }
     }
+
     private IEnumerator RainbowAnimation()
     {
+        Debug.Log("NeoPixelStrip: RainbowAnimation started");
         float hue = 0f;
 
         while (true)
@@ -194,6 +192,7 @@ public class NeoPixelStrip : MonoBehaviour
 
     private IEnumerator ColorWaveAnimation(Color baseColor)
     {
+        Debug.Log($"NeoPixelStrip: ColorWaveAnimation started with color {baseColor}");
         // Extract hue from base color
         Color.RGBToHSV(baseColor, out float baseHue, out float baseSaturation, out float baseValue);
 
@@ -220,6 +219,7 @@ public class NeoPixelStrip : MonoBehaviour
 
     private void StopCurrentAnimation()
     {
+        Debug.Log("NeoPixelStrip: StopCurrentAnimation called");
         if (currentAnimation != null)
         {
             StopCoroutine(currentAnimation);
@@ -232,6 +232,7 @@ public class NeoPixelStrip : MonoBehaviour
     /// </summary>
     public void StopAnimations()
     {
+        Debug.Log("NeoPixelStrip: StopAnimations called");
         StopCurrentAnimation();
     }
 }

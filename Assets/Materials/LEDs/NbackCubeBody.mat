@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: NbackCubeLight
+  m_Name: NbackCubeBody
   m_Shader: {fileID: 4800000, guid: 5557bc1b223d7784b8336d9f372605ab, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -68,24 +68,24 @@ Material:
     - _GlossMapScale: 1
     - _Glossiness: 0.369
     - _GlossyReflections: 1
-    - _InnerRadius: 0.093
+    - _InnerRadius: 0
     - _Metallic: 0
-    - _MiddleRadius: 0.515
+    - _MiddleRadius: 0.524
     - _Mode: 0
     - _OcclusionStrength: 1
     - _OffsetX: 0
-    - _OffsetY: 0
+    - _OffsetY: 0.268
     - _Parallax: 0.02
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
-    - _StretchX: 1
-    - _StretchY: 1
+    - _StretchX: 1.46
+    - _StretchY: 1.23
     - _UVSec: 0
     - _ZWrite: 1
     m_Colors:
-    - _Color: {r: 0.2980392, g: 1, b: 0.4006387, a: 1}
-    - _ColorInner: {r: 0.85882354, g: 1, b: 0.92470586, a: 1}
+    - _Color: {r: 0.35403234, g: 1, b: 0.2980392, a: 1}
+    - _ColorInner: {r: 0.68490565, g: 1, b: 0.83370024, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
