@@ -256,7 +256,7 @@ public class LightColorSetter : MonoBehaviour
     }
 
     /// <summary>
-    /// Restores lights and renderers to their original colors
+    /// Restores lights and renderers to their original colors only if they've been modified
     /// </summary>
     public void RestoreOriginalColors()
     {
@@ -264,7 +264,11 @@ public class LightColorSetter : MonoBehaviour
         {
             if (light != null && originalLightColors.ContainsKey(light))
             {
-                light.color = originalLightColors[light];
+                // Only update if the current color is different from the original
+                if (light.color != originalLightColors[light])
+                {
+                    light.color = originalLightColors[light];
+                }
             }
         }
 
@@ -272,10 +276,38 @@ public class LightColorSetter : MonoBehaviour
         {
             if (renderer != null && originalRendererColors.ContainsKey(renderer))
             {
-                renderer.material.color = originalRendererColors[renderer];
-                renderer.material.SetColor("_ColorInner", originalRendererInnerColors[renderer]);
-                renderer.material.SetFloat("_OffsetX", 0);
-                renderer.material.SetFloat("_OffsetY", 0);
+                // Only update material color if it's different from the original
+                if (renderer.material.color != originalRendererColors[renderer])
+                {
+                    renderer.material.color = originalRendererColors[renderer];
+                }
+
+                // Check if inner color needs to be updated
+                if (renderer.material.HasProperty("_ColorInner") &&
+                    renderer.material.GetColor("_ColorInner") != originalRendererInnerColors[renderer])
+                {
+                    renderer.material.SetColor("_ColorInner", originalRendererInnerColors[renderer]);
+                }
+
+                // Always reset offsets as there's no way to efficiently check if they've changed
+                float currentOffsetX = 0;
+                float currentOffsetY = 0;
+
+                if (renderer.material.HasProperty("_OffsetX"))
+                {
+                    currentOffsetX = renderer.material.GetFloat("_OffsetX");
+                }
+
+                if (renderer.material.HasProperty("_OffsetY"))
+                {
+                    currentOffsetY = renderer.material.GetFloat("_OffsetY");
+                }
+
+                if (currentOffsetX != 0 || currentOffsetY != 0)
+                {
+                    renderer.material.SetFloat("_OffsetX", 0);
+                    renderer.material.SetFloat("_OffsetY", 0);
+                }
             }
         }
     }

@@ -59,8 +59,8 @@ public class NeoPixelStrip : MonoBehaviour
     /// </summary>
     public void SetPixelColors(Color[] colors)
     {
-        Debug.Log($"NeoPixelStrip: SetPixelColors called with {colors.Length} colors");
-        StopCurrentAnimation();
+        //Debug.Log($"NeoPixelStrip: SetPixelColors called with {colors.Length} colors");
+        //StopCurrentAnimation();
 
         int count = Mathf.Min(colors.Length, pixels.Length);
 

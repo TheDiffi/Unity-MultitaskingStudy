@@ -364,6 +364,8 @@ public class InterruptRenderer : MonoBehaviour
                 // Update visual representation after each position change
                 RenderLEDs();
             }
+            // Update visual representation after each position change
+            RenderLEDs();
 
             // Wait for the next fixed update
             yield return new WaitForFixedUpdate();
