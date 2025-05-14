@@ -15,6 +15,7 @@ public class NeoPixelStrip : MonoBehaviour
     {
         Debug.Log("NeoPixelStrip: Start called");
         InitializePixels();
+        TurnOffAll();
     }
 
     public void InitializePixels()

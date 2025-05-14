@@ -86,6 +86,8 @@ public class LightColorSetter : MonoBehaviour
                 }
             }
         }
+
+        TurnOff();
     }
 
     /// <summary>
