@@ -96472,6 +96472,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 39573382}
     - target: {fileID: 3382997451608042308, guid: 770f901bf954a914f91f541cc8c88e58, type: 3}
+      propertyPath: m_distanceFromEyes
+      value: 0.4
+      objectReference: {fileID: 0}
+    - target: {fileID: 3382997451608042308, guid: 770f901bf954a914f91f541cc8c88e58, type: 3}
       propertyPath: m_webCamTextureManager
       value: 
       objectReference: {fileID: 2140166246}

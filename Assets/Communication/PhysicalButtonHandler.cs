@@ -115,6 +115,7 @@ public class PhysicalButtonHandler : MonoBehaviour
 
     private void TestSendback()
     {
-        connector.Send("button-press-received", "Hello from Unity!");
+        var timestamp = System.DateTime.Now.ToString("o");
+        connector.Send("button-press-received", $"{{\"timestamp\":\"{timestamp}\"}}");
     }
 }

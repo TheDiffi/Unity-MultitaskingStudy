@@ -178,7 +178,7 @@ dotnet_diagnostic.IDE0046.severity = warning
 # dotnet_style_prefer_conditional_expression_over_return
 
 # Remove unnecessary parentheses
-dotnet_diagnostic.IDE0047.severity = warning
+dotnet_diagnostic.IDE0047.severity = silent
 # dotnet_style_parentheses_in_arithmetic_binary_operators
 # dotnet_style_parentheses_in_relational_binary_operators
 # dotnet_style_parentheses_in_other_binary_operators
