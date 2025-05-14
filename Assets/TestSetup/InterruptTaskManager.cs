@@ -53,6 +53,7 @@ public class InterruptTaskManager : MonoBehaviour
             Debug.LogError("InterruptRenderer component not found. Please assign it in the inspector.");
         }
         InitEvents();
+        interruptRenderer.ResetRenderer();
     }
 
     //event receivers for start, interrupt, task-over, exit, get-data

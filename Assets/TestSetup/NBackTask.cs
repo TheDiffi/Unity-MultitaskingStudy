@@ -63,6 +63,7 @@ public class NBackTask : MonoBehaviour
             eventsSetup = true;
         }
 
+        lightColorSetter.TurnOff();
     }
 
     void StartTask()
@@ -294,6 +295,8 @@ public class NBackTask : MonoBehaviour
             currentConnector.SendNBackEvent("configure-error", "Error parsing configuration: " + ex.Message);
             Debug.LogException(ex);
         }
+
+        lightColorSetter.TurnOff();
     }
 
     // Helper function to convert color name to color index
@@ -339,18 +342,14 @@ public class NBackTask : MonoBehaviour
                 // This loop will exit when HandleResponse is called by button press
             }
 
-            // The stimulus is already black and feedback has been shown in HandleResponse
+            // Feedback has been shown in HandleResponse
             // Now wait for the inter-stimulus interval before the next trial
-            if (currentTrial < totalTrials - 1)
+            lightColorSetter.TurnOff();
+            float waited = 0;
+            while (waited < interStimulusInterval)
             {
-                lightColorSetter.TurnOff();
-                // Wait for ISI, but check for pause during this time
-                float waited = 0;
-                while (waited < interStimulusInterval)
-                {
-                    yield return null;
-                    waited += Time.deltaTime;
-                }
+                yield return null;
+                waited += Time.deltaTime;
             }
 
             currentTrial++;

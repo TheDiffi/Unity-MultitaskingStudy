@@ -52,8 +52,9 @@ public class CalibrationHandler : MonoBehaviour
     {
         if (eventsSetup) return; // Avoid re-registering events
         eventsSetup = true;
-        currentController.On("start-targeting", (data) => EnableTargeter(data));
+        currentController.On("start-targeting", (data) => EnableTargeter());
         currentController.On("start-calibration", (data) => TriggerCalibration(data));
+        currentController.On("session-complete", (data) => VanishAllObjects());
 
     }
 
@@ -107,13 +108,9 @@ public class CalibrationHandler : MonoBehaviour
 
     public void EnableTargeter()
     {
-        EnableTargeter(null);
-    }
-
-    private void EnableTargeter(object _)
-    {
         //ignore data
         if (targeterEnabled) return;
+        passthroughManager.ClearTags();
         targeterEnabled = true;
         targeterScript.SetEnabled(true);
     }
@@ -166,5 +163,13 @@ public class CalibrationHandler : MonoBehaviour
         isCalibrating = false;
         targeterEnabled = false;
         targeterScript.SetEnabled(false);
+    }
+
+    public void VanishAllObjects()
+    {
+        Debug.Log("VanishAllObjects called");
+        passthroughManager.ClearTags();
+        targeterScript.SetEnabled(false);
+        targeterEnabled = false;
     }
 }

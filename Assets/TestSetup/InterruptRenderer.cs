@@ -88,7 +88,6 @@ public class InterruptRenderer : MonoBehaviour
     public void ResetRenderer()
     {
         // Reset the cursor position and stop any ongoing movement
-        TurnOffAllStrips();
         StopTrial();
         InitializeZones();
         TurnOffAllStrips();
