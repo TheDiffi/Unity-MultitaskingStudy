@@ -399,6 +399,15 @@ public class InterruptTaskManager : MonoBehaviour
             return;
         }
 
+        var zoneIndex = 0;
+        var accuracy = 0;
+        var responseTime = 0.0f;
+
+        if (interruptRenderer != null)
+        {
+            (zoneIndex, accuracy, responseTime) = interruptRenderer.HandleButtonPress();
+        }
+
         // Send live data for button press in regular mode
         if (currentState is GameState.InProgress)
         {
@@ -414,7 +423,6 @@ public class InterruptTaskManager : MonoBehaviour
 
         if (interruptRenderer != null)
         {
-            (int zoneIndex, int accuracy, float responseTime) = interruptRenderer.HandleButtonPress();
             OnTrialComplete(zoneIndex, accuracy, responseTime);
         }
         else

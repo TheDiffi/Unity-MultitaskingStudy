@@ -244,6 +244,9 @@ public class InterruptRenderer : MonoBehaviour
             return (-1, 0, 0f);
         }
 
+        // Stop the trial
+        StopTrial();
+
         // Get elapsed time in seconds with high precision
         float responseTime = trialStopwatch.ElapsedMilliseconds / 1000f;
 
@@ -261,8 +264,7 @@ public class InterruptRenderer : MonoBehaviour
 
         Debug.Log($"[InterruptRenderer] Button pressed: Zone {zoneIndex}, Accuracy {accuracy:F2}, Time {responseTime:F2}s (Offset: {timeOffsetMs}ms)");
 
-        // Stop the trial
-        StopTrial();
+
         // Pass the calculated offset position to EndTrial
         StartCoroutine(EndTrial());
 
