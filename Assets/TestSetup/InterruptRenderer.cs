@@ -329,10 +329,14 @@ public class InterruptRenderer : MonoBehaviour
         float actualTraversalTime = customTraversalTime > 0 ? customTraversalTime : traversalTimeMs;
 
         // We'll calculate the base step time once (without speedModifier)
-        float stepTime = actualTraversalTime / 1000f / (pixelCount * 2);
+        float stepTime = actualTraversalTime / 1000f / ((pixelCount + 1) * 2);
 
         // Calculate how many fixed updates we need to wait before moving the cursor
         float timeAccumulator = 0f;
+
+        // Variables to track traversal time
+        float traversalStartTime = Time.realtimeSinceStartup;
+        int lastDirection = cursorDirection;
 
         while (isMoving)
         {
@@ -354,15 +358,32 @@ public class InterruptRenderer : MonoBehaviour
                 {
                     cursorPixelPosition = pixelCount - 1;
                     cursorDirection = -1;
+
+                    // Log time if direction changed
+                    if (lastDirection != cursorDirection)
+                    {
+                        float currentTime = Time.realtimeSinceStartup;
+                        float timeTaken = (currentTime - traversalStartTime) * 1000f; // Convert to ms
+                        Debug.Log($"[InterruptRenderer] Traversal time from left to right: {timeTaken:F2}ms (Target: {actualTraversalTime}ms)");
+                        traversalStartTime = currentTime;
+                        lastDirection = cursorDirection;
+                    }
                 }
                 else if (cursorPixelPosition <= 0)
                 {
                     cursorPixelPosition = 0;
                     cursorDirection = 1;
-                }
 
-                // Update visual representation after each position change
-                RenderLEDs();
+                    // Log time if direction changed
+                    if (lastDirection != cursorDirection)
+                    {
+                        float currentTime = Time.realtimeSinceStartup;
+                        float timeTaken = (currentTime - traversalStartTime) * 1000f; // Convert to ms
+                        Debug.Log($"[InterruptRenderer] Traversal time from right to left: {timeTaken:F2}ms (Target: {actualTraversalTime}ms)");
+                        traversalStartTime = currentTime;
+                        lastDirection = cursorDirection;
+                    }
+                }
             }
             // Update visual representation after each position change
             RenderLEDs();

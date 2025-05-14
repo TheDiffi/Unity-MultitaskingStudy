@@ -21,7 +21,7 @@ public class NBackTask : MonoBehaviour
     [SerializeField]
     private MasterConnector currentConnector;
 
-    private Color[] colors = { Color.red, new Color(0f, 1f, 0.35f, 0f), Color.blue, Color.yellow, Color.magenta, Color.white };
+    private Color[] colors = { Color.red, new Color(0f, 1f, 0.35f, 1f), Color.blue, new Color(1f, 1f, 0.5867923f, 1f), Color.magenta, Color.white };
     private int currentTrial = 0;
     private int sessionNumber = -1;
     private string studyId = "NOCONF";
@@ -480,8 +480,16 @@ public class NBackTask : MonoBehaviour
     void GetData()
     {
         Debug.Log("Sending trial data to Node.js controller");
+        StartCoroutine(SendDataWithDelay());
+    }
+
+    IEnumerator SendDataWithDelay()
+    {
         foreach (var data in trialDataList)
+        {
             currentConnector.SendNBackEvent("trial-data", data.ToString());
+            yield return new WaitForSeconds(0.01f); // 10ms delay between sending each data item
+        }
 
         // Change from "nback-data-complete" to match what the Node.js controller expects
         currentConnector.SendNBackEvent("data-complete", "Data transfer complete");

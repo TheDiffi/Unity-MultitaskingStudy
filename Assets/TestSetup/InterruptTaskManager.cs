@@ -250,16 +250,23 @@ public class InterruptTaskManager : MonoBehaviour
     private void GetData()
     {
         Debug.Log("Sending collected interrupt data...");
+        // Send trial data with delay to prevent overwhelming the receiver
+        StartCoroutine(SendDataWithDelay());
+    }
 
-        // Calculate session statistics using high-precision timing
+    private System.Collections.IEnumerator SendDataWithDelay()
+    {
+        // Send trial data with delay
+        foreach (var data in trialDataList)
+        {
+            currentController.SendPowerStabilizationEvent("trial-data", data.ToString());
+            yield return new WaitForSeconds(0.01f); // 10ms delay between sending each data item
+        }
+
+        // Calculate session statistics
         float totalDuration = SessionStopwatch.get.ElapsedMilliseconds / 1000f;
         float successRate = trialCount > 0 ? (float)successCount / trialCount : 0;
         string performanceRating = EvaluatePerformance(successRate);
-
-        // Send trial data
-        foreach (var data in trialDataList)
-            currentController.SendPowerStabilizationEvent("trial-data", data.ToString());
-
 
         // Send session summary
         Dictionary<string, object> sessionSummary = new Dictionary<string, object>
