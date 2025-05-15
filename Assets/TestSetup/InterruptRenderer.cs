@@ -246,22 +246,19 @@ public class InterruptRenderer : MonoBehaviour
         StopTrial();
 
         // Get elapsed time in seconds with high precision
-        float responseTime = trialStopwatch.ElapsedMilliseconds - timeOffsetMs / 1000f;
-
         // Apply time offset (convert from ms to seconds)
-        //float effectiveResponseTime = responseTime - timeOffsetMs / 1000f;
+        float responseTime = (trialStopwatch.ElapsedMilliseconds - timeOffsetMs) / 1000f;
 
         // Calculate cursor position with offset applied
-        //int offsetCursorPixelPosition = CalculateCursorPositionAtTime(timeOffsetMs);
+        int offsetCursorPixelPosition = CalculateCursorPositionAtTime(timeOffsetMs);
 
         // Calculate which zone the cursor is in with offset applied
-        int zoneIndex = pixelZones[cursorPixelPosition];
+        int zoneIndex = pixelZones[offsetCursorPixelPosition];
 
         // Calculate accuracy with offset applied
-        int accuracy = CalculateAccuracy(cursorPixelPosition);
+        int accuracy = CalculateAccuracy(offsetCursorPixelPosition);
 
         Debug.Log($"[InterruptRenderer] Button pressed: Zone {zoneIndex}, Accuracy {accuracy:F2}, Time {responseTime:F2}s (Offset: {timeOffsetMs}ms)");
-
 
         // Pass the calculated offset position to EndTrial
         StartCoroutine(EndTrial());
@@ -481,6 +478,11 @@ public class InterruptRenderer : MonoBehaviour
         int newCursorPixelPosition = cursorPixelPosition - stepsToMove * cursorDirection;
         // Clamp the new cursor position to the valid range
         newCursorPixelPosition = Mathf.Clamp(newCursorPixelPosition, 0, pixelCount - 1);
+        // In the last step, we put the cursor back one step in the opposite direction
+        newCursorPixelPosition = Mathf.Clamp(cursorPixelPosition - (cursorDirection * 2), 0, pixelCount - 1);
+        //display the cursor
+        RenderLEDs();
+        // Return the new cursor position
         return newCursorPixelPosition;
     }
 }
