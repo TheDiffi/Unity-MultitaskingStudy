@@ -333,46 +333,61 @@ public class InterruptTaskManager : MonoBehaviour
             successCount++;
         }
 
-        // Record trial data with high-precision timestamp
-        string timestamp = SessionStopwatch.ElapsedToLocalTime(SessionStopwatch.get.ElapsedMilliseconds).ToString("o");
-        int reactionTimeMs = Mathf.RoundToInt(responseTime * 1000); // Convert response time to milliseconds
-
-        var trialData = new InterruptTrialData
+        try
         {
-            study_id = studyId,
-            session_number = sessionNumber,
-            accuracy = accuracy,        // Integer accuracy value from InterruptRenderer
-            speed = traversalTime,      // Speed is the cursor traversal time in ms
-            zone_correct = inGreenZone, // Whether the user hit the correct zone
-            timestamp = timestamp,
-            reaction_time_power = reactionTimeMs // Store user reaction time in milliseconds
-        };
+            // Record trial data with high-precision timestamp
+            string timestamp = SessionStopwatch.ElapsedToLocalTime(SessionStopwatch.get.ElapsedMilliseconds).ToString("o");
+            int reactionTimeMs = Mathf.RoundToInt(responseTime * 1000); // Convert response time to milliseconds
 
-        trialDataList.Add(trialData);
+            var trialData = new InterruptTrialData
+            {
+                study_id = studyId,
+                session_number = sessionNumber,
+                accuracy = accuracy,        // Integer accuracy value from InterruptRenderer
+                speed = traversalTime,      // Speed is the cursor traversal time in ms
+                zone_correct = inGreenZone, // Whether the user hit the correct zone
+                timestamp = timestamp,
+                reaction_time_power = reactionTimeMs // Store user reaction time in milliseconds
+            };
 
-        currentController.SendPowerStabilizationEvent("trial-complete", trialData.ToString());
+            trialDataList.Add(trialData);
 
-        // Send live data for trial completion
-        currentController.SendPowerStabilizationLiveData("trial-complete", trialData);
+            currentController.SendPowerStabilizationEvent("trial-complete", trialData.ToString());
+
+            // Send live data for trial completion
+            currentController.SendPowerStabilizationLiveData("trial-complete", trialData);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError("Error recording trial data: " + ex.Message);
+            return;
+        }
 
         if (currentState == GameState.TestMode)
         {
             return;
         }
 
-        if (currentTrial < trialCount)
+        // Commented out because we only have one trial
+        /*if (currentTrial < trialCount)
         {
             StartNextTrial();
-        }
-        else
-        {
-            CompleteInterrupt();
-        }
+            return;
+        } */
+
+        CompleteInterrupt();
+
     }
 
     // Handle button press from UI or keyboard
     public void HandleInput()
     {
+        if (currentState is GameState.Complete)
+        {
+            // backup if the first button press did not make it to the server
+            CompleteInterrupt();
+            return;
+        }
         if (currentState is not GameState.InProgress and not GameState.TestMode and not GameState.InterruptTriggered)
         {
             Debug.LogWarning("Button pressed but task not in progress or test mode");
@@ -399,35 +414,46 @@ public class InterruptTaskManager : MonoBehaviour
             return;
         }
 
-        var zoneIndex = 0;
-        var accuracy = 0;
-        var responseTime = 0.0f;
+        if (currentState == GameState.InProgress)
+        {
+            var zoneIndex = 0;
+            var accuracy = 0;
+            var responseTime = 0.0f;
+            try
+            {
+                if (interruptRenderer != null)
+                {
+                    (zoneIndex, accuracy, responseTime) = interruptRenderer.HandleButtonPress();
+                }
 
-        if (interruptRenderer != null)
-        {
-            (zoneIndex, accuracy, responseTime) = interruptRenderer.HandleButtonPress();
-        }
+                // Send live data for button press in regular mode
+                if (currentState is GameState.InProgress)
+                {
+                    var inputData = new Dictionary<string, object> {
+                    { "studyId", studyId },
+                    { "sessionNumber", sessionNumber },
+                    { "currentTrial", currentTrial + 1 },
+                    { "elapsedMilliseconds", SessionStopwatch.get.ElapsedMilliseconds },
+                    { "timestamp", DateTime.Now.ToString("o") }
+                    };
+                    currentController.SendPowerStabilizationLiveData("input-registered", inputData);
+                }
 
-        // Send live data for button press in regular mode
-        if (currentState is GameState.InProgress)
-        {
-            var inputData = new Dictionary<string, object> {
-                { "studyId", studyId },
-                { "sessionNumber", sessionNumber },
-                { "currentTrial", currentTrial + 1 },
-                { "elapsedMilliseconds", SessionStopwatch.get.ElapsedMilliseconds },
-                { "timestamp", DateTime.Now.ToString("o") }
-            };
-            currentController.SendPowerStabilizationLiveData("input-registered", inputData);
-        }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("Error handling button press: " + ex.Message);
+                return;
+            }
 
-        if (interruptRenderer != null)
-        {
-            OnTrialComplete(zoneIndex, accuracy, responseTime);
-        }
-        else
-        {
-            OnTrialComplete(1, 12, 12312.0f); // Placeholder values for testing
+            if (interruptRenderer != null)
+            {
+                OnTrialComplete(zoneIndex, accuracy, responseTime);
+            }
+            else
+            {
+                OnTrialComplete(1, 12, 12312.0f); // Placeholder values for testing
+            }
         }
     }
 
@@ -464,7 +490,15 @@ public class InterruptTaskManager : MonoBehaviour
 
         public override string ToString()
         {
-            return JsonUtility.ToJson(this);
+            try
+            {
+                return JsonUtility.ToJson(this);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("Error converting trial data to JSON: " + ex.Message);
+                return "{}"; // Return empty JSON object on error
+            }
         }
     }
 }

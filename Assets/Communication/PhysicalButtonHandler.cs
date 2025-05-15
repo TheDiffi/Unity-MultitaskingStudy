@@ -34,6 +34,8 @@ public class PhysicalButtonHandler : MonoBehaviour
     [Tooltip("Event triggered when the 'interrupt' button is pressed")]
     public UnityEvent onInterruptButtonPressed;
 
+    private bool isConnected = false;
+
     private void Start()
     {
         if (connector == null)
@@ -44,11 +46,21 @@ public class PhysicalButtonHandler : MonoBehaviour
         }
 
         // Register for the physical-button-press events
-        connector.On("physical-button-press", HandlePhysicalButtonPress);
+        registerEvents();
 
         if (debugMode)
         {
             Debug.Log($"PhysicalButtonHandler initialized");
+        }
+    }
+
+    private void registerEvents()
+    {
+        if (connector != null && !isConnected)
+        {
+            isConnected = true;
+            // Register for the physical-button-press events
+            connector.On("physical-button-press", HandlePhysicalButtonPress);
         }
     }
 
@@ -58,6 +70,7 @@ public class PhysicalButtonHandler : MonoBehaviour
         {
             // Unregister from events when disabled
             connector.Off("physical-button-press");
+            isConnected = false;
         }
     }
 
