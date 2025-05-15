@@ -20,9 +20,7 @@ public class InterruptRenderer : MonoBehaviour
     [SerializeField] private float redZoneWidth = 0.4f; // 40% on each side
     [SerializeField] private float greenZoneWidth = 0.2f; // 20% in the center
 
-    [Header("Timing")]
-    [Tooltip("Time offset in milliseconds to apply when calculating final position and response time. Positive values make it behave as if button press happened earlier.")]
-    [SerializeField] private float timeOffsetMs = 30f;
+    [SerializeField] private float timeOffsetMs = 25f;
 
     [Header("Colors")]
     [SerializeField] private Color redZoneColor = new Color(0f, 1f, 0.5f, 1f);
@@ -248,7 +246,7 @@ public class InterruptRenderer : MonoBehaviour
         StopTrial();
 
         // Get elapsed time in seconds with high precision
-        float responseTime = trialStopwatch.ElapsedMilliseconds / 1000f;
+        float responseTime = trialStopwatch.ElapsedMilliseconds - timeOffsetMs / 1000f;
 
         // Apply time offset (convert from ms to seconds)
         //float effectiveResponseTime = responseTime - timeOffsetMs / 1000f;

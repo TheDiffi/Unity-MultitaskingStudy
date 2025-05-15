@@ -118,7 +118,7 @@ public class InterruptTaskManager : MonoBehaviour
 
             if (paramsDict.TryGetValue("traversalTime", out object timeObj) && timeObj is long timeLong)
             {
-                traversalTime = (int)timeLong;
+                traversalTime = (int)timeLong + 50;
             }
 
             if (paramsDict.TryGetValue("trialCount", out object countObj) && countObj is long countLong)
