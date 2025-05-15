@@ -158,7 +158,7 @@ public class NeoPixelStrip : MonoBehaviour
                     }
                     else
                     {
-                        pixels[i].SetHue(Color.red);
+                        pixels[i].TurnWhite(1f);
                     }
                 }
             }
@@ -225,6 +225,13 @@ public class NeoPixelStrip : MonoBehaviour
         {
             StopCoroutine(currentAnimation);
             currentAnimation = null;
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                if (pixels[i] != null)
+                {
+                    pixels[i].ForceRestoreOriginalColors();
+                }
+            }
         }
     }
 

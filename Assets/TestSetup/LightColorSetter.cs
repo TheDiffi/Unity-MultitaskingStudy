@@ -313,4 +313,60 @@ public class LightColorSetter : MonoBehaviour
             }
         }
     }
+
+    public void ForceRestoreOriginalColors()
+    {
+        foreach (Light light in lights)
+        {
+            if (light != null && originalLightColors.ContainsKey(light))
+            {
+                light.color = originalLightColors[light];
+            }
+        }
+
+        foreach (Renderer renderer in renderers)
+        {
+            if (renderer != null && originalRendererColors.ContainsKey(renderer))
+            {
+                renderer.material.color = originalRendererColors[renderer];
+                renderer.material.SetColor("_ColorInner", originalRendererInnerColors[renderer]);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Turns all lights and renderers to white color with optional brightness control
+    /// </summary>
+    /// <param name="brightness">Optional brightness level between 0 and 1. Default is 1 (full brightness)</param>
+    public void TurnWhite(float brightness = 1.0f)
+    {
+        // Clamp brightness to valid range
+        brightness = Mathf.Clamp(brightness, 0f, 1f);
+
+        // Update lights
+        foreach (Light light in lights)
+        {
+            if (light != null)
+            {
+                // Set to white with controlled brightness
+                light.color = new Color(brightness, brightness, brightness, 1);
+            }
+        }
+
+        // Update renderers
+        foreach (Renderer renderer in renderers)
+        {
+            if (renderer != null)
+            {
+                // Set main color to white with controlled brightness
+                renderer.material.color = new Color(brightness, brightness, brightness, 1);
+
+                // Set inner color to white with controlled brightness if property exists
+                if (renderer.material.HasProperty("_ColorInner"))
+                {
+                    renderer.material.SetColor("_ColorInner", new Color(brightness, brightness, brightness, 1));
+                }
+            }
+        }
+    }
 }
