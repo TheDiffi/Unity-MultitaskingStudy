@@ -483,6 +483,6 @@ public class InterruptRenderer : MonoBehaviour
         //display the cursor
         RenderLEDs();
         // Return the new cursor position
-        return newCursorPixelPosition;
+        return cursorPixelPosition;
     }
 }

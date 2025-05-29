@@ -286,6 +286,10 @@ public class NBackTask : MonoBehaviour
                     Debug.LogWarning("No valid colors found in sequence");
                 }
             }
+            else
+            {
+                Debug.LogWarning("No sequence data found in configuration");
+            }
 
             currentConnector.SendNBackEvent("configure-success", "Configuration applied successfully");
             Debug.Log($"Configuration applied: stimDuration={stimulusDuration}s, ISI={interStimulusInterval}s, nBackLevel={nBackLevel}, trials={totalTrials}");
